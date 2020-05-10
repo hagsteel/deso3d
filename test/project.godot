@@ -1,0 +1,14 @@
+; Engine configuration file.
+; Generated with GUT
+
+config_version=4
+
+_global_script_classes=[  ]
+_global_script_class_icons={
+
+}
+
+[application]
+
+config/name="deso3d"
+run/main_scene="res://Scene.tscn"
