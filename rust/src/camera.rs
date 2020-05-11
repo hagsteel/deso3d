@@ -55,8 +55,6 @@ pub fn mouse_cam() -> Box<dyn Runnable> {
                 pos
             };
 
-            eprintln!("{:?}", pos);
-
             for (entity, _) in units.iter_entities(world) {
                 cmd.add_component(entity, Destination(pos));
             }

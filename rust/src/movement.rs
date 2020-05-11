@@ -101,11 +101,6 @@ pub fn move_units() -> Box<dyn Runnable> {
                 unsafe {
                     unit.inner.move_and_slide_default(velocity.0, Vector3::new(0., 1., 0.));
                     pos.0 = unit.translation();
-
-                    // if (pos.0 - dest.0).length() < 0.5 {
-                    //     cmd.remove_component::<Destination>(entity);
-                    //     eprintln!("{:?}", "removed destination");
-                    // }
                 }
             }
         })
@@ -113,13 +108,12 @@ pub fn move_units() -> Box<dyn Runnable> {
 
 pub fn done_moving() -> Box<dyn Runnable> {
     SystemBuilder::new("remove destination if done moving")
-        .with_query(<(Read<Destination>, Read<Pos>)>::query())
+        .with_query(<(Read<Destination>, Read<Pos>, Write<Velocity>)>::query())
         .build_thread_local(|cmd, world, res, units| {
-            for (entity, (dest, pos)) in units.iter_entities(world) {
-                eprintln!("{:?}", (dest.0 - pos.0).length());
-                if (dest.0 - pos.0).length() < 4. {
+            for (entity, (dest, pos, mut velocity)) in units.iter_entities_mut(world) {
+                if (dest.0 - pos.0).length() < 5.5 {
                     cmd.remove_component::<Destination>(entity);
-                    eprintln!("{:?}", "remove");
+                    velocity.0 = Vector3::zero();
                 }
             }
     })

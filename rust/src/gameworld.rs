@@ -69,9 +69,9 @@ impl GameWorld {
         self.resources.insert(Camera(camera));
 
         // Player unit
-        for x in 0..4 {
+        for x in 0..10 {
             let x = x as f32 * 4.;
-            let y = 4.;
+            let y = 12.;
             let z = 0.;
 
             let mut unit = spawner::spawn_unit();
