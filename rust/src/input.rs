@@ -15,16 +15,17 @@ impl MouseButton {
     }
 
     pub fn from_event(ev: InputEventMouseButton) -> Self {
-        Self::Mouse {
+        MouseButton::Mouse {
             pressed: ev.is_pressed(),
             button_index: ev.get_button_index(),
         }
     }
 
     pub fn button_pressed(&self, index: i64) -> bool {
+        use MouseButton::*;
         match self {
-            Self::Empty => false,
-            Self::Mouse { pressed, button_index } => {
+            Empty => false,
+            Mouse { pressed, button_index } => {
                 *pressed && *button_index == index
             }
         }
@@ -53,11 +54,11 @@ impl MousePos {
 
 bitflags! {
     pub struct Keys: u32 {
-        const Empty = 0;
-        const Left = 1;
-        const Right = 2;
-        const Up = 4;
-        const Down = 8;
+        const EMPTY = 0;
+        const LEFT = 1;
+        const RIGHT = 2;
+        const UP = 4;
+        const DOWN = 8;
     }
 }
 
@@ -70,12 +71,8 @@ impl Keyboard {
     pub fn new() -> Self {
         Self {
             // is_pressed: false,
-            keys: Keys::Empty,
+            keys: Keys::EMPTY,
         }
-    }
-
-    pub fn set_empty(&mut self) {
-        self.keys = Keys::Empty;
     }
 
     pub fn update(&mut self, key: Keys, is_pressed: bool) {

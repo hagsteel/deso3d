@@ -152,27 +152,27 @@ impl GameWorld {
         if let Some(_) = event.cast::<InputEventKey>() {
             self.resources.get_mut::<Keyboard>().map(|mut key| {
                 if event.is_action_pressed("Left".into(), false) {
-                    key.update(Keys::Left, true);
+                    key.update(Keys::LEFT, true);
                 } else if event.is_action_released("Left".into()) {
-                    key.update(Keys::Left, false);
+                    key.update(Keys::LEFT, false);
                 }
 
                 if event.is_action_pressed("Right".into(), false) {
-                    key.update(Keys::Right, true);
+                    key.update(Keys::RIGHT, true);
                 } else if event.is_action_released("Right".into()) {
-                    key.update(Keys::Right, false);
+                    key.update(Keys::RIGHT, false);
                 }
 
                 if event.is_action_pressed("Up".into(), false) {
-                    key.update(Keys::Up, true);
+                    key.update(Keys::UP, true);
                 } else if event.is_action_released("Up".into()) {
-                    key.update(Keys::Up, false);
+                    key.update(Keys::UP, false);
                 }
 
                 if event.is_action_pressed("Down".into(), false) {
-                    key.update(Keys::Down, true);
+                    key.update(Keys::DOWN, true);
                 } else if event.is_action_released("Down".into()) {
-                    key.update(Keys::Down, false);
+                    key.update(Keys::DOWN, false);
                 }
             });
         }

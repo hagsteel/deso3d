@@ -92,25 +92,25 @@ fn move_camera() -> Box<dyn Runnable> {
         .build_thread_local(|_, _, res, _| {
             let (keyboard, camera, unit_sel_area, delta) = res;
 
-            if keyboard.keys() == Keys::Empty {
+            if keyboard.keys() == Keys::EMPTY {
                 return;
             }
 
             let mut translation = Vector3::zero();
 
-            if keyboard.keys() & Keys::Left == Keys::Left {
+            if keyboard.keys() & Keys::LEFT == Keys::LEFT {
                 translation.x += -1.0;
             }
 
-            if keyboard.keys() & Keys::Right == Keys::Right {
+            if keyboard.keys() & Keys::RIGHT == Keys::RIGHT {
                 translation.x += 1.0;
             }
 
-            if keyboard.keys() & Keys::Up == Keys::Up {
+            if keyboard.keys() & Keys::UP == Keys::UP {
                 translation.z += -1.0;
             }
 
-            if keyboard.keys() & Keys::Down == Keys::Down {
+            if keyboard.keys() & Keys::DOWN == Keys::DOWN {
                 translation.z += 1.0;
             }
 

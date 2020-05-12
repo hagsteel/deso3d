@@ -35,7 +35,7 @@ pub fn draw_tilemap() -> Box<dyn Runnable> {
     SystemBuilder::new("draw tilemap")
         .write_resource::<Coords>()
         .write_resource::<TileMap>()
-        .build_thread_local(|cmd, world, (coords, tilemap), query| {
+        .build_thread_local(|_, _, (coords, tilemap), _| {
             if coords.cells.len() == 0 {
                 return;
             }

@@ -6,7 +6,6 @@ use euclid::{Transform3D, UnknownUnit, Angle};
 
 use crate::unit::Unit;
 use crate::gameworld::Delta;
-use crate::input::MouseButton;
 
 type Transform3 = Transform3D<f32, UnknownUnit, UnknownUnit>;
 pub type Rotation3 = Rot3D<f32, UnknownUnit, UnknownUnit>;
@@ -35,7 +34,7 @@ pub fn apply_gravity() -> Box<dyn Runnable> {
     SystemBuilder::new("apply gravit")
         .read_resource::<Delta>()
         .with_query(<Write<Velocity>>::query())
-        .build_thread_local(|cmd, world, delta, velocities| {
+        .build_thread_local(|_, world, delta, velocities| {
             for mut velocity in velocities.iter_mut(world) {
                 velocity.0.y -= GRAVITY * delta.0;
             }
@@ -44,10 +43,8 @@ pub fn apply_gravity() -> Box<dyn Runnable> {
 
 pub fn apply_directional_velocity() -> Box<dyn Runnable> {
     SystemBuilder::new("apply directional velocity")
-        .read_resource::<Delta>()
-        .read_resource::<MouseButton>()
         .with_query(<(Write<Velocity>, Read<Speed>, Read<Pos>, Read<Destination>)>::query())
-        .build_thread_local(|cmd, world, (delta, mouse_btn), velocities| {
+        .build_thread_local(|_, world, _, velocities| {
             for (mut velocity, speed, pos, dest) in velocities.iter_mut(world) {
                 let mut direction = (dest.0 - pos.0).normalize();
                 direction.y = 0.;
@@ -68,9 +65,9 @@ fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3
 pub fn rotate_unit() -> Box<dyn Runnable> {
     SystemBuilder::new("rotate unit")
         .with_query(<(Write<Unit>, Read<Pos>, Read<Destination>)>::query())
-        .build_thread_local(|cmd, world, _, velocities| {
+        .build_thread_local(|_, world, _, velocities| {
             for (mut unit, pos, dest) in velocities.iter_mut(world) {
-                let mut direction = (dest.0 - pos.0).normalize();
+                let direction = (dest.0 - pos.0).normalize();
 
                 unsafe {
                     let current_rot = unit.inner.get_rotation();
@@ -96,12 +93,10 @@ pub fn rotate_unit() -> Box<dyn Runnable> {
 pub fn move_units() -> Box<dyn Runnable> {
     SystemBuilder::new("move units")
         .with_query(<(Write<Pos>, Write<Unit>, Read<Velocity>)>::query())
-        .build_thread_local(|cmd, world, res, units| {
-            for (entity, (mut pos, mut unit, velocity)) in units.iter_entities_mut(world) {
-                unsafe {
-                    unit.inner.move_and_slide_default(velocity.0, Vector3::new(0., 1., 0.));
-                    pos.0 = unit.translation();
-                }
+        .build_thread_local(|_, world, _, units| {
+            for (mut pos, mut unit, velocity) in units.iter_mut(world) {
+                unit.inner.move_and_slide_default(velocity.0, Vector3::new(0., 1., 0.));
+                pos.0 = unit.translation();
             }
         })
 }
@@ -109,7 +104,7 @@ pub fn move_units() -> Box<dyn Runnable> {
 pub fn done_moving() -> Box<dyn Runnable> {
     SystemBuilder::new("remove destination if done moving")
         .with_query(<(Read<Destination>, Read<Pos>, Write<Velocity>)>::query())
-        .build_thread_local(|cmd, world, res, units| {
+        .build_thread_local(|cmd, world, _, units| {
             for (entity, (dest, pos, mut velocity)) in units.iter_entities_mut(world) {
                 if (dest.0 - pos.0).length() < 2.5 {
                     cmd.remove_component::<Destination>(entity);
