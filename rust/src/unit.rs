@@ -6,6 +6,9 @@ use gdnative::{KinematicBody, Vector3};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Selected;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Player;
+
 // -----------------------------------------------------------------------------
 //     - Components -
 // -----------------------------------------------------------------------------

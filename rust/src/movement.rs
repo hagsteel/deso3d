@@ -114,7 +114,6 @@ pub fn done_moving() -> Box<dyn Runnable> {
                 if (dest.0 - pos.0).length() < 2.5 {
                     cmd.remove_component::<Destination>(entity);
                     velocity.0 = Vector3::zero();
-                    eprintln!("{:?}", "velocity zero");
                 }
             }
     })

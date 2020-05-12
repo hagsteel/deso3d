@@ -3,11 +3,11 @@ use gdextras::node_ext::NodeExt;
 use gdnative::{
     godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
     methods, Camera as GodotCamera, GridMap, InputEvent, InputEventKey, InputEventMouse,
-    InputEventMouseButton, Label, NativeClass, Performance, Spatial, Vector3, MeshInstance
+    InputEventMouseButton, Label, MeshInstance, NativeClass, Performance, Spatial, Vector3,
 };
 use legion::prelude::*;
 
-use crate::camera::{select_position, move_camera, Camera};
+use crate::camera::{move_camera, select_position, Camera, Drag, SelectionBox};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
 use crate::movement::{
     apply_directional_velocity, apply_gravity, done_moving, move_units, rotate_unit, Pos, Speed,
@@ -15,7 +15,7 @@ use crate::movement::{
 };
 use crate::spawner;
 use crate::tilemap::{draw_tilemap, Coords, TileMap};
-use crate::unit::Unit;
+use crate::unit::{Player, Unit};
 
 fn setup_physics_schedule() -> Schedule {
     Schedule::builder()
@@ -57,6 +57,7 @@ impl GameWorld {
         resources.insert(MousePos::zero());
         resources.insert(Coords::new());
         resources.insert(Keyboard::new());
+        resources.insert(Drag::Empty);
 
         Self {
             world: Universe::new().create_world(),
@@ -79,6 +80,11 @@ impl GameWorld {
             .expect("failed to get camera");
         self.resources.insert(Camera(camera));
 
+        let selection_box = owner
+            .get_and_cast::<MeshInstance>("SelectionBox")
+            .expect("failed to get selection box");
+        self.resources.insert(SelectionBox(selection_box));
+
         // Player unit
         for x in 0..1 {
             let x = x as f32 * 4.;
@@ -96,7 +102,7 @@ impl GameWorld {
             let speed = Speed(10f32);
 
             self.world.insert(
-                (),
+                (Player,),
                 Some((Unit::new(unit), Velocity(Vector3::zero()), speed, Pos(pos))),
             );
         }

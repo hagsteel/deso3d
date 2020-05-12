@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=2]
+[gd_scene load_steps=10 format=2]
 
 [ext_resource path="res://libdeso3d.gdnlib" type="GDNativeLibrary" id=1]
 [ext_resource path="res://fonts/hack.tres" type="DynamicFont" id=2]
@@ -8,6 +8,22 @@
 resource_name = "GameWorld"
 class_name = "GameWorld"
 library = ExtResource( 1 )
+
+[sub_resource type="CubeMesh" id=2]
+size = Vector3( 1, 5, 1 )
+
+[sub_resource type="SpatialMaterial" id=3]
+flags_transparent = true
+albedo_color = Color( 0, 1, 0.0627451, 0.196078 )
+
+[sub_resource type="CubeMesh" id=5]
+size = Vector3( 100, 2, 100 )
+
+[sub_resource type="SpatialMaterial" id=6]
+albedo_color = Color( 1, 0.368627, 0.368627, 1 )
+
+[sub_resource type="BoxShape" id=4]
+extents = Vector3( 50, 1, 50 )
 
 [node name="GameWorld" type="Spatial"]
 script = SubResource( 1 )
@@ -48,3 +64,19 @@ data = {
 __meta__ = {
 "_editor_clip_": 0
 }
+
+[node name="SelectionBox" type="MeshInstance" parent="."]
+mesh = SubResource( 2 )
+material/0 = SubResource( 3 )
+
+[node name="Area" type="Area" parent="."]
+collision_layer = 2
+collision_mask = 2
+
+[node name="MeshInstance" type="MeshInstance" parent="Area"]
+visible = false
+mesh = SubResource( 5 )
+material/0 = SubResource( 6 )
+
+[node name="CollisionShape" type="CollisionShape" parent="Area"]
+shape = SubResource( 4 )
