@@ -11,7 +11,7 @@ use crate::input::MouseButton;
 type Transform3 = Transform3D<f32, UnknownUnit, UnknownUnit>;
 pub type Rotation3 = Rot3D<f32, UnknownUnit, UnknownUnit>;
 
-const GRAVITY: f32 = 10.;
+const GRAVITY: f32 = 100.;
 
 // -----------------------------------------------------------------------------
 //     - Components -
@@ -111,9 +111,10 @@ pub fn done_moving() -> Box<dyn Runnable> {
         .with_query(<(Read<Destination>, Read<Pos>, Write<Velocity>)>::query())
         .build_thread_local(|cmd, world, res, units| {
             for (entity, (dest, pos, mut velocity)) in units.iter_entities_mut(world) {
-                if (dest.0 - pos.0).length() < 5.5 {
+                if (dest.0 - pos.0).length() < 2.5 {
                     cmd.remove_component::<Destination>(entity);
                     velocity.0 = Vector3::zero();
+                    eprintln!("{:?}", "velocity zero");
                 }
             }
     })

@@ -6,6 +6,8 @@ mod movement;
 mod unit;
 mod camera;
 mod spawner;
+mod tilemap;
+mod procgen;
 
 fn init(handle: init::InitHandle) {
     handle.add_class::<gameworld::GameWorld>();

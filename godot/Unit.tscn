@@ -3,6 +3,7 @@
 [ext_resource path="res://assets/mu.glb" type="PackedScene" id=1]
 
 [sub_resource type="CapsuleShape" id=1]
+radius = 0.8
 
 [node name="Unit" type="KinematicBody"]
 

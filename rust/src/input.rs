@@ -1,4 +1,5 @@
 use gdnative::{InputEventMouseButton, Vector2};
+use bitflags::bitflags;
 
 pub enum MouseButton {
     Empty,
@@ -44,5 +45,45 @@ impl MousePos {
         Self {
             global: Vector2::zero(),
         }
+    }
+}
+
+bitflags! {
+    pub struct Keys: u32 {
+        const Empty = 0;
+        const Left = 1;
+        const Right = 2;
+        const Up = 4;
+        const Down = 8;
+    }
+}
+
+pub struct Keyboard {
+    // is_pressed: bool,
+    keys: Keys,
+}
+
+impl Keyboard {
+    pub fn new() -> Self {
+        Self {
+            // is_pressed: false,
+            keys: Keys::Empty,
+        }
+    }
+
+    pub fn set_empty(&mut self) {
+        self.keys = Keys::Empty;
+    }
+
+    pub fn update(&mut self, key: Keys, is_pressed: bool) {
+        // self.is_pressed = is_pressed;
+        match is_pressed {
+            true => self.keys |= key,
+            false => self.keys.remove(key),
+        }
+    }
+
+    pub fn keys(&self) -> Keys {
+        self.keys
     }
 }

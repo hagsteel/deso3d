@@ -1,0 +1,19 @@
+[remap]
+
+importer="wavefront_obj"
+type="Mesh"
+path="res://.import/slope.obj-8f19369873d7d0b1ae21ee8f458e540d.mesh"
+
+[deps]
+
+files=[ "res://.import/slope.obj-8f19369873d7d0b1ae21ee8f458e540d.mesh" ]
+
+source_file="res://assets/slope.obj"
+dest_files=[ "res://.import/slope.obj-8f19369873d7d0b1ae21ee8f458e540d.mesh", "res://.import/slope.obj-8f19369873d7d0b1ae21ee8f458e540d.mesh" ]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3( 1, 1, 1 )
+offset_mesh=Vector3( 0, 0, 0 )
+optimize_mesh=true
