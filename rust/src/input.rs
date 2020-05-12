@@ -1,6 +1,9 @@
 use gdnative::{InputEventMouseButton, Vector2};
 use bitflags::bitflags;
 
+pub const LMB: i64 = 1;
+pub const RMB: i64 = 2;
+
 pub enum MouseButton {
     Empty,
     Mouse { pressed: bool, button_index: i64 },

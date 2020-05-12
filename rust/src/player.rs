@@ -2,10 +2,20 @@ use gdnative::{Rect2, Vector2, Vector3};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 
-use crate::input::{MouseButton, MousePos};
+use crate::camera::{Camera, Drag, SelectionBox, RAY_LENGTH};
+use crate::input::{MouseButton, MousePos, LMB, RMB};
 use crate::movement::Pos;
-use crate::unit::{Player, Selected};
-use crate::camera::{Camera, SelectionBox, Drag, RAY_LENGTH};
+use crate::unit::Unit;
+use crate::movement::Destination;
+
+// -----------------------------------------------------------------------------
+//     - Tags -
+// -----------------------------------------------------------------------------
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Selected;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Player;
 
 // -----------------------------------------------------------------------------
 //     - Systems -
@@ -21,12 +31,12 @@ fn select_units() -> Box<dyn Runnable> {
         .build_thread_local(|cmd, world, resources, unit_positions| {
             let (mouse_btn, mouse_pos, camera, selection_box, drag) = resources;
 
-            let mut pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH) {
+            let mut pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH, 2) {
                 Some(p) => p,
                 None => return,
             };
 
-            if !mouse_btn.button_pressed(1) {
+            if !mouse_btn.button_pressed(LMB) {
                 if let Drag::Start(start_pos) = drag as &mut Drag {
                     // Selection
                     let start_2d = Vector2::new(start_pos.x, start_pos.z).to_point();
@@ -63,14 +73,39 @@ fn select_units() -> Box<dyn Runnable> {
                         let translation = pos - size / 2.;
                         selection_box.0.set_translation(translation);
                     }
-
                 }
             }
         })
 }
 
+fn player_find_destination() -> Box<dyn Runnable> {
+    SystemBuilder::new("player find destination")
+        .read_resource::<Camera>()
+        .write_resource::<MouseButton>()
+        .read_resource::<MousePos>()
+        .with_query(<Read<Unit>>::query().filter(tag::<Selected>()))
+        .build_thread_local(|cmd, world, resources, query| {
+            let (camera, mouse_btn, mouse_pos) = resources;
+
+            if !mouse_btn.button_pressed(RMB) {
+                return
+            }
+
+            mouse_btn.consume();
+
+            let pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH, 1) {
+                Some(p) => p,
+                None => return,
+            };
+
+            for (entity, _) in query.iter_entities(world) {
+                cmd.add_component(entity, Destination(pos));
+            }
+        })
+}
 
 pub fn player_systems(builder: Builder) -> Builder {
     builder
         .add_thread_local(select_units())
+        .add_thread_local(player_find_destination())
 }

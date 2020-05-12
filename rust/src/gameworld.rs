@@ -16,8 +16,8 @@ use crate::movement::{
 };
 use crate::spawner;
 use crate::tilemap::{draw_tilemap, Coords, TileMap};
-use crate::unit::{Player, Unit};
-use crate::player::player_systems;
+use crate::unit::Unit;
+use crate::player::{Player, player_systems};
 
 fn setup_physics_schedule() -> Schedule {
     let builder = Schedule::builder()

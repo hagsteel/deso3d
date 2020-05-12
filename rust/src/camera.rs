@@ -46,7 +46,7 @@ unsafe impl Send for Camera {}
 unsafe impl Sync for Camera {}
 
 impl Camera {
-    pub fn pos_from_camera(&self, mouse_pos: Vector2, ray_length: f32) -> Option<Vector3> {
+    pub fn pos_from_camera(&self, mouse_pos: Vector2, ray_length: f32, col_mask: i64) -> Option<Vector3> {
         let from = unsafe { self.0.project_ray_origin(mouse_pos) };
         let to = from + unsafe { self.0.project_ray_normal(mouse_pos) } * ray_length;
 
@@ -65,8 +65,8 @@ impl Camera {
                 from,                // From
                 to,                  // To
                 VariantArray::new(), // Ignored objects
-                2,                   // Collision mask
-                false,               // Collide with bodies
+                col_mask,            // Collision mask
+                true,                // Collide with bodies
                 true,                // Collide with areas
             );
             let pos_variant = dict.get(&Variant::from_godot_string(&"position".into()));
