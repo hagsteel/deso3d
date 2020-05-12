@@ -45,6 +45,11 @@ Down={
  ]
 }
 
+[layer_names]
+
+3d_physics/layer_1="All"
+3d_physics/layer_2="Mouse Selection"
+
 [rendering]
 
 environment/default_environment="res://default_env.tres"

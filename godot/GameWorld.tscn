@@ -18,14 +18,14 @@ params_specular_mode = 4
 albedo_color = Color( 0, 1, 0.0627451, 0.196078 )
 roughness = 0.0
 
-[sub_resource type="CubeMesh" id=5]
-size = Vector3( 100, 2, 100 )
+[sub_resource type="CubeMesh" id=4]
+size = Vector3( 200, 2, 200 )
 
-[sub_resource type="SpatialMaterial" id=6]
+[sub_resource type="SpatialMaterial" id=5]
 albedo_color = Color( 1, 0.368627, 0.368627, 1 )
 
-[sub_resource type="BoxShape" id=4]
-extents = Vector3( 50, 1, 50 )
+[sub_resource type="BoxShape" id=6]
+extents = Vector3( 100, 1, 100 )
 
 [node name="GameWorld" type="Spatial"]
 script = SubResource( 1 )
@@ -73,12 +73,12 @@ material/0 = SubResource( 3 )
 
 [node name="UnitSelectionArea" type="Area" parent="."]
 collision_layer = 2
-collision_mask = 2
+collision_mask = 0
 
 [node name="MeshInstance" type="MeshInstance" parent="UnitSelectionArea"]
 visible = false
-mesh = SubResource( 5 )
-material/0 = SubResource( 6 )
+mesh = SubResource( 4 )
+material/0 = SubResource( 5 )
 
 [node name="CollisionShape" type="CollisionShape" parent="UnitSelectionArea"]
-shape = SubResource( 4 )
+shape = SubResource( 6 )

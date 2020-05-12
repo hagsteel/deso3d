@@ -1,4 +1,3 @@
-use gdextras::camera::CameraExt;
 use gdnative::{Rect2, Vector2, Vector3};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
@@ -22,7 +21,7 @@ fn select_units() -> Box<dyn Runnable> {
         .build_thread_local(|cmd, world, resources, unit_positions| {
             let (mouse_btn, mouse_pos, camera, selection_box, drag) = resources;
 
-            let mut pos = match camera.0.pos_from_camera(mouse_pos.global(), RAY_LENGTH) {
+            let mut pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH) {
                 Some(p) => p,
                 None => return,
             };
