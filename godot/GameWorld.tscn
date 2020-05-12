@@ -14,7 +14,9 @@ size = Vector3( 1, 5, 1 )
 
 [sub_resource type="SpatialMaterial" id=3]
 flags_transparent = true
+params_specular_mode = 4
 albedo_color = Color( 0, 1, 0.0627451, 0.196078 )
+roughness = 0.0
 
 [sub_resource type="CubeMesh" id=5]
 size = Vector3( 100, 2, 100 )
@@ -69,14 +71,14 @@ __meta__ = {
 mesh = SubResource( 2 )
 material/0 = SubResource( 3 )
 
-[node name="Area" type="Area" parent="."]
+[node name="UnitSelectionArea" type="Area" parent="."]
 collision_layer = 2
 collision_mask = 2
 
-[node name="MeshInstance" type="MeshInstance" parent="Area"]
+[node name="MeshInstance" type="MeshInstance" parent="UnitSelectionArea"]
 visible = false
 mesh = SubResource( 5 )
 material/0 = SubResource( 6 )
 
-[node name="CollisionShape" type="CollisionShape" parent="Area"]
+[node name="CollisionShape" type="CollisionShape" parent="UnitSelectionArea"]
 shape = SubResource( 4 )

@@ -7,7 +7,7 @@ use gdnative::{
 };
 use legion::prelude::*;
 
-use crate::camera::{move_camera, select_position, Camera, Drag, SelectionBox};
+use crate::camera::{camera_systems, Camera, Drag, SelectionBox};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
 use crate::movement::{
     apply_directional_velocity, apply_gravity, done_moving, move_units, rotate_unit, Pos, Speed,
@@ -16,18 +16,27 @@ use crate::movement::{
 use crate::spawner;
 use crate::tilemap::{draw_tilemap, Coords, TileMap};
 use crate::unit::{Player, Unit};
+use crate::player::player_systems;
 
 fn setup_physics_schedule() -> Schedule {
-    Schedule::builder()
+    let builder = Schedule::builder()
         .add_thread_local(apply_directional_velocity())
         .add_thread_local(apply_gravity())
         .add_thread_local(rotate_unit())
         .add_thread_local(move_units())
-        .add_thread_local(done_moving())
-        .add_thread_local(select_position())
-        .add_thread_local(draw_tilemap())
-        .add_thread_local(move_camera())
-        .build()
+        .add_thread_local(done_moving());
+
+    let builder = player_systems(builder);
+    let builder = camera_systems(builder);
+
+    builder.build()
+}
+
+fn setup_schedule() -> Schedule {
+    let builder = Schedule::builder()
+        .add_thread_local(draw_tilemap());
+
+    builder.build()
 }
 
 // -----------------------------------------------------------------------------
@@ -45,12 +54,14 @@ pub struct GameWorld {
     world: World,
     resources: Resources,
     physics: Schedule,
+    process: Schedule,
 }
 
 #[methods]
 impl GameWorld {
     pub fn _init(_owner: Spatial) -> Self {
         let physics = setup_physics_schedule();
+        let process = setup_schedule();
         let mut resources = Resources::default();
         resources.insert(Delta(0.));
         resources.insert(MouseButton::Empty);
@@ -63,6 +74,7 @@ impl GameWorld {
             world: Universe::new().create_world(),
             resources,
             physics,
+            process,
         }
     }
 
@@ -159,7 +171,10 @@ impl GameWorld {
     }
 
     #[export]
-    pub fn _process(&self, owner: Spatial, _: f64) {
+    pub fn _process(&mut self, owner: Spatial, _: f64) {
+        self.process.execute(&mut self.world, &mut self.resources);
+
+        // Debug label
         let mut label = owner.get_and_cast::<Label>("UI/Panel/DebugLabel").unwrap();
         let perf = Performance::godot_singleton();
         let fps = format!("fps: {}", perf.get_monitor(Performance::TIME_FPS));

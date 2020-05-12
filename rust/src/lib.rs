@@ -8,6 +8,7 @@ mod camera;
 mod spawner;
 mod tilemap;
 mod procgen;
+mod player;
 
 fn init(handle: init::InitHandle) {
     handle.add_class::<gameworld::GameWorld>();
