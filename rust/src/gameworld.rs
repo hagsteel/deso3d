@@ -2,31 +2,22 @@ use gdextras::input::InputEventExt;
 use gdextras::node_ext::NodeExt;
 use gdnative::{
     godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
-    methods, Camera as GodotCamera, GridMap, InputEvent, InputEventKey, InputEventMouse,
+    methods, Area, Camera as GodotCamera, GridMap, InputEvent, InputEventKey, InputEventMouse,
     InputEventMouseButton, Label, MeshInstance, NativeClass, Performance, Spatial, Vector3,
-    Area
 };
 use legion::prelude::*;
 
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
-use crate::movement::{
-    apply_directional_velocity, apply_gravity, done_moving, move_units, rotate_unit, Pos, Speed,
-    Velocity,
-};
+use crate::movement::{movement_systems, Pos, Speed, Velocity};
+use crate::player::{player_systems, Player};
 use crate::spawner;
 use crate::tilemap::{draw_tilemap, Coords, TileMap};
 use crate::unit::Unit;
-use crate::player::{Player, player_systems};
 
 fn setup_physics_schedule() -> Schedule {
-    let builder = Schedule::builder()
-        .add_thread_local(apply_directional_velocity())
-        .add_thread_local(apply_gravity())
-        .add_thread_local(rotate_unit())
-        .add_thread_local(move_units())
-        .add_thread_local(done_moving());
-
+    let builder = Schedule::builder();
+    let builder = movement_systems(builder);
     let builder = player_systems(builder);
     let builder = camera_systems(builder);
 
@@ -34,8 +25,7 @@ fn setup_physics_schedule() -> Schedule {
 }
 
 fn setup_schedule() -> Schedule {
-    let builder = Schedule::builder()
-        .add_thread_local(draw_tilemap());
+    let builder = Schedule::builder().add_thread_local(draw_tilemap());
 
     builder.build()
 }
@@ -97,7 +87,8 @@ impl GameWorld {
         let unit_selection_area = owner
             .get_and_cast::<Area>("UnitSelectionArea")
             .expect("failed to get unit selection area");
-        self.resources.insert(UnitSelectionArea(unit_selection_area));
+        self.resources
+            .insert(UnitSelectionArea(unit_selection_area));
 
         // Draw selection node
         let selection_box = owner

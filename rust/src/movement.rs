@@ -1,6 +1,7 @@
 use gdextras::movement::Move3D;
 use gdnative::Vector3;
 use legion::prelude::*;
+use legion::systems::schedule::Builder;
 use euclid::Rotation3D as Rot3D;
 use euclid::{Transform3D, UnknownUnit, Angle};
 
@@ -11,6 +12,15 @@ type Transform3 = Transform3D<f32, UnknownUnit, UnknownUnit>;
 pub type Rotation3 = Rot3D<f32, UnknownUnit, UnknownUnit>;
 
 const GRAVITY: f32 = 100.;
+
+fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3) {
+    let cols = trans.to_column_arrays();
+    let v1 = Vector3::new(cols[0][0], cols[0][1], cols[0][2]);
+    let v2 = Vector3::new(cols[1][0], cols[1][1], cols[1][2]);
+    let v3 = Vector3::new(cols[2][0], cols[2][1], cols[2][2]);
+
+    (v1, v2, v3)
+}
 
 // -----------------------------------------------------------------------------
 //     - Components -
@@ -30,7 +40,7 @@ pub struct Destination(pub Vector3);
 // -----------------------------------------------------------------------------
 //     - Systems -
 // -----------------------------------------------------------------------------
-pub fn apply_gravity() -> Box<dyn Runnable> {
+fn apply_gravity() -> Box<dyn Runnable> {
     SystemBuilder::new("apply gravit")
         .read_resource::<Delta>()
         .with_query(<Write<Velocity>>::query())
@@ -41,7 +51,7 @@ pub fn apply_gravity() -> Box<dyn Runnable> {
         })
 }
 
-pub fn apply_directional_velocity() -> Box<dyn Runnable> {
+fn apply_directional_velocity() -> Box<dyn Runnable> {
     SystemBuilder::new("apply directional velocity")
         .with_query(<(Write<Velocity>, Read<Speed>, Read<Pos>, Read<Destination>)>::query())
         .build_thread_local(|_, world, _, velocities| {
@@ -53,16 +63,7 @@ pub fn apply_directional_velocity() -> Box<dyn Runnable> {
         })
 }
 
-fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3) {
-    let cols = trans.to_column_arrays();
-    let v1 = Vector3::new(cols[0][0], cols[0][1], cols[0][2]);
-    let v2 = Vector3::new(cols[1][0], cols[1][1], cols[1][2]);
-    let v3 = Vector3::new(cols[2][0], cols[2][1], cols[2][2]);
-
-    (v1, v2, v3)
-}
-
-pub fn rotate_unit() -> Box<dyn Runnable> {
+fn rotate_unit() -> Box<dyn Runnable> {
     SystemBuilder::new("rotate unit")
         .with_query(<(Write<Unit>, Read<Pos>, Read<Destination>)>::query())
         .build_thread_local(|_, world, _, velocities| {
@@ -90,7 +91,7 @@ pub fn rotate_unit() -> Box<dyn Runnable> {
         })
 }
 
-pub fn move_units() -> Box<dyn Runnable> {
+fn move_units() -> Box<dyn Runnable> {
     SystemBuilder::new("move units")
         .with_query(<(Write<Pos>, Write<Unit>, Read<Velocity>)>::query())
         .build_thread_local(|_, world, _, units| {
@@ -101,7 +102,7 @@ pub fn move_units() -> Box<dyn Runnable> {
         })
 }
 
-pub fn done_moving() -> Box<dyn Runnable> {
+fn done_moving() -> Box<dyn Runnable> {
     SystemBuilder::new("remove destination if done moving")
         .with_query(<(Read<Destination>, Read<Pos>, Write<Velocity>)>::query())
         .build_thread_local(|cmd, world, _, units| {
@@ -112,4 +113,13 @@ pub fn done_moving() -> Box<dyn Runnable> {
                 }
             }
     })
+}
+
+pub fn movement_systems(builder: Builder) -> Builder {
+    builder
+        .add_thread_local(apply_directional_velocity())
+        .add_thread_local(apply_gravity())
+        .add_thread_local(rotate_unit())
+        .add_thread_local(move_units())
+        .add_thread_local(done_moving())
 }
