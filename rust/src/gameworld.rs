@@ -5,12 +5,16 @@ use gdnative::{
     methods, Area, Camera as GodotCamera, GridMap, InputEvent, InputEventKey, InputEventMouse,
     InputEventMouseButton, Label, MeshInstance, NativeClass, Performance, Spatial, Vector3,
 };
+use lazy_static::lazy_static;
 use legion::prelude::*;
+use std::sync::Mutex;
 
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
+use crate::enemy::{enemy_systems, Enemy, DetectionRange};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
 use crate::movement::{movement_systems, Pos, Speed, Velocity};
-use crate::player::{player_systems, Player};
+use crate::player::{player_systems, PlayerId};
+use crate::saveload;
 use crate::spawner;
 use crate::tilemap::{draw_tilemap, Coords, TileMap};
 use crate::unit::Unit;
@@ -18,16 +22,31 @@ use crate::unit::Unit;
 fn setup_physics_schedule() -> Schedule {
     let builder = Schedule::builder();
     let builder = movement_systems(builder);
-    let builder = player_systems(builder);
-    let builder = camera_systems(builder);
 
     builder.build()
 }
 
 fn setup_schedule() -> Schedule {
     let builder = Schedule::builder().add_thread_local(draw_tilemap());
-
+    let builder = enemy_systems(builder);
+    let builder = player_systems(builder);
+    let builder = camera_systems(builder);
     builder.build()
+}
+
+// -----------------------------------------------------------------------------
+//     - World -
+// -----------------------------------------------------------------------------
+
+lazy_static! {
+    static ref WORLD: Mutex<World> = Mutex::new(Universe::new().create_world());
+}
+
+pub fn with_world<F>(f: F)
+where
+    F: FnOnce(&mut World),
+{
+    let _ = WORLD.try_lock().map(|mut world| f(&mut world));
 }
 
 // -----------------------------------------------------------------------------
@@ -42,7 +61,6 @@ pub struct Delta(pub f32);
 #[derive(NativeClass)]
 #[inherit(Spatial)]
 pub struct GameWorld {
-    world: World,
     resources: Resources,
     physics: Schedule,
     process: Schedule,
@@ -62,7 +80,6 @@ impl GameWorld {
         resources.insert(Drag::Empty);
 
         Self {
-            world: Universe::new().create_world(),
             resources,
             physics,
             process,
@@ -97,10 +114,10 @@ impl GameWorld {
         self.resources.insert(SelectionBox(selection_box));
 
         // Player unit
-        for x in 0..1 {
+        for x in 15..18 {
             let x = x as f32 * 4.;
             let y = 12.;
-            let z = 0.;
+            let z = 10.;
 
             let mut unit = spawner::spawn_unit();
             unsafe {
@@ -112,10 +129,41 @@ impl GameWorld {
 
             let speed = Speed(10f32);
 
-            self.world.insert(
-                (Player,),
-                Some((Unit::new(unit), Velocity(Vector3::zero()), speed, Pos(pos))),
-            );
+            with_world(|world| {
+                world.insert(
+                    (PlayerId::new(x as u8),),
+                    Some((Unit::new(unit), Velocity(Vector3::zero()), speed, Pos(pos))),
+                );
+            });
+        }
+
+        for x in 15..16 {
+            let x = x as f32 * 4.;
+            let y = 12.;
+            let z = 26.;
+
+            let mut unit = spawner::spawn_enemy();
+            unsafe {
+                owner.add_child(Some(unit.to_node()), false);
+                unit.set_translation(Vector3::new(x, y, z));
+            }
+
+            let pos = unsafe { unit.get_translation() };
+
+            let speed = Speed(10f32);
+
+            with_world(|world| {
+                world.insert(
+                    (Enemy,),
+                    Some((
+                        Unit::new(unit),
+                        Velocity(Vector3::zero()),
+                        speed,
+                        Pos(pos),
+                        DetectionRange(10.),
+                    )),
+                );
+            });
         }
     }
 
@@ -123,6 +171,12 @@ impl GameWorld {
     pub fn _unhandled_input(&mut self, owner: Spatial, event: InputEvent) {
         if event.action_pressed("ui_cancel") {
             unsafe { owner.get_tree().map(|mut tree| tree.quit(0)) };
+        }
+
+        if event.action_pressed("save") {
+            if let Err(e) = saveload::save(0) {
+                eprintln!("{:?}", e);
+            }
         }
 
         // Mouse button
@@ -171,7 +225,9 @@ impl GameWorld {
 
     #[export]
     pub fn _process(&mut self, owner: Spatial, _: f64) {
-        self.process.execute(&mut self.world, &mut self.resources);
+        with_world(|world| {
+            self.process.execute(world, &mut self.resources);
+        });
 
         // Debug label
         let mut label = owner.get_and_cast::<Label>("UI/Panel/DebugLabel").unwrap();
@@ -185,6 +241,8 @@ impl GameWorld {
         self.resources
             .get_mut::<Delta>()
             .map(|mut d| d.0 = delta as f32);
-        self.physics.execute(&mut self.world, &mut self.resources);
+        with_world(|world| {
+            self.physics.execute(world, &mut self.resources);
+        });
     }
 }

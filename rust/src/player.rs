@@ -1,12 +1,13 @@
 use gdnative::{Rect2, Vector2, Vector3};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
+use serde::{Serialize, Deserialize};
 
 use crate::camera::{Camera, Drag, SelectionBox, RAY_LENGTH};
 use crate::input::{MouseButton, MousePos, LMB, RMB};
+use crate::movement::Destination;
 use crate::movement::Pos;
 use crate::unit::Unit;
-use crate::movement::Destination;
 
 // -----------------------------------------------------------------------------
 //     - Tags -
@@ -14,8 +15,14 @@ use crate::movement::Destination;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Selected;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Player;
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+pub struct PlayerId(u8);
+
+impl PlayerId {
+    pub fn new(id: u8) -> Self {
+        Self(id)
+    }
+}
 
 // -----------------------------------------------------------------------------
 //     - Systems -
@@ -27,7 +34,7 @@ fn select_units() -> Box<dyn Runnable> {
         .read_resource::<Camera>()
         .write_resource::<SelectionBox>()
         .write_resource::<Drag>()
-        .with_query(<Read<Pos>>::query().filter(tag::<Player>()))
+        .with_query(<Read<Pos>>::query().filter(tag::<PlayerId>()))
         .build_thread_local(|cmd, world, resources, unit_positions| {
             let (mouse_btn, mouse_pos, camera, selection_box, drag) = resources;
 
@@ -88,7 +95,7 @@ fn player_find_destination() -> Box<dyn Runnable> {
             let (camera, mouse_btn, mouse_pos) = resources;
 
             if !mouse_btn.button_pressed(RMB) {
-                return
+                return;
             }
 
             mouse_btn.consume();

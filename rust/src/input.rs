@@ -22,10 +22,9 @@ impl MouseButton {
     }
 
     pub fn button_pressed(&self, index: i64) -> bool {
-        use MouseButton::*;
         match self {
-            Empty => false,
-            Mouse { pressed, button_index } => {
+            Self::Empty => false,
+            Self::Mouse { pressed, button_index } => {
                 *pressed && *button_index == index
             }
         }

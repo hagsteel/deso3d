@@ -4,6 +4,10 @@ pub fn spawn_unit() -> KinematicBody {
     load_resource("res://Unit.tscn")
 }
 
+pub fn spawn_enemy() -> KinematicBody {
+    load_resource("res://BadGuy.tscn")
+}
+
 fn load_resource<T: GodotObject>(path: &str) -> T {
     let mut loader = ResourceLoader::godot_singleton();
     loader.load(path.into(), "PackedScene".into(), false)

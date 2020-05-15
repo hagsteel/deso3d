@@ -22,9 +22,9 @@ pub fn random_choice<T>(slice: &[T], seed: u64) -> &T {
     &slice[index]
 }
 
-// pub fn random_bool(seed: u64, weight: usize) -> bool {
-//     let hasher = XxHash::with_seed(seed);
-//     let hash = hasher.finish();
-//     let val = hash as usize % 10000;
-//     val <= weight
-// }
+pub fn random_bool(seed: u64, weight: usize) -> bool {
+    let hasher = XxHash::with_seed(seed);
+    let hash = hasher.finish();
+    let val = hash as usize % 10000;
+    val <= weight
+}

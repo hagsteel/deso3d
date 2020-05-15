@@ -1,0 +1,48 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://MainMenu.gdns" type="Script" id=1]
+
+[node name="MainMenu" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 6.82553
+margin_top = -1.13757
+margin_right = 6.82556
+margin_bottom = -1.13757
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Load" type="Label" parent="."]
+margin_left = 86.632
+margin_top = 391.678
+margin_right = 1352.63
+margin_bottom = 405.678
+rect_scale = Vector2( 3, 3 )
+mouse_filter = 0
+text = "Load"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="New game" type="Label" parent="."]
+margin_left = 87.7696
+margin_top = 455.384
+margin_right = 1353.77
+margin_bottom = 469.384
+rect_scale = Vector2( 3, 3 )
+mouse_filter = 0
+text = "New game"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+[connection signal="gui_input" from="Load" to="." method="load_game" binds= [ 0 ]]
+[connection signal="gui_input" from="New game" to="." method="new_game"]

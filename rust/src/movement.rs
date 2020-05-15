@@ -4,6 +4,7 @@ use legion::prelude::*;
 use legion::systems::schedule::Builder;
 use euclid::Rotation3D as Rot3D;
 use euclid::{Transform3D, UnknownUnit, Angle};
+use serde::{Deserialize, Serialize};
 
 use crate::unit::Unit;
 use crate::gameworld::Delta;
@@ -28,10 +29,10 @@ fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3
 #[derive(Debug, Clone, Copy)]
 pub struct Velocity(pub Vector3);
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct Pos(pub Vector3);
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct Speed(pub f32);
 
 #[derive(Debug, Clone, Copy)]

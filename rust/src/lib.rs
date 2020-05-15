@@ -9,9 +9,13 @@ mod spawner;
 mod tilemap;
 mod procgen;
 mod player;
+mod saveload;
+mod enemy;
+mod main_menu;
 
 fn init(handle: init::InitHandle) {
     handle.add_class::<gameworld::GameWorld>();
+    handle.add_class::<main_menu::MainMenu>();
 }
 
 godot_gdnative_init!();

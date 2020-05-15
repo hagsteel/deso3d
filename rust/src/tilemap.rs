@@ -1,7 +1,7 @@
 use gdnative::{GridMap, Vector2};
 use legion::prelude::*;
 
-use crate::procgen::{pack_vec2, random_choice};
+use crate::procgen::{pack_vec2, random_bool};
 
 pub struct TileMap(pub GridMap);
 
@@ -46,10 +46,14 @@ pub fn draw_tilemap() -> Box<dyn Runnable> {
                 let z = cell.y as i64;
 
                 let seed = pack_vec2(cell);
-                let cell_type =
-                    random_choice(&[2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 3], seed);
+                let cell_type = if random_bool(seed, 100) {
+                    2
+                } else {
+                    1
+                };
+                    // random_choice(&[2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], seed);
                 unsafe {
-                    tilemap.0.set_cell_item(x, y, z, *cell_type, 0);
+                    tilemap.0.set_cell_item(x, y, z, cell_type, 0);
                 }
             }
         })
