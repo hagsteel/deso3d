@@ -26,7 +26,6 @@ godot_gdnative_terminate!();
 #[cfg(feature = "godot_test")]
 macro_rules! run_test {
     ($test:expr) => {
-
         if $test() {
             println!("{} [Ok]", stringify!($test));
             true

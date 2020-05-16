@@ -5,9 +5,10 @@ use serde::{Serialize, Deserialize};
 
 use crate::camera::{Camera, Drag, SelectionBox, RAY_LENGTH};
 use crate::input::{MouseButton, MousePos, LMB, RMB};
-use crate::movement::Destination;
-use crate::movement::Pos;
+use crate::movement::{Destination, Pos};
 use crate::unit::Unit;
+
+const OFFSET_MUL: f32 = 3.0;
 
 // -----------------------------------------------------------------------------
 //     - Tags -
@@ -52,6 +53,10 @@ fn select_units() -> Box<dyn Runnable> {
                     let point = Vector2::new(start_2d.x.min(end_2d.x), start_2d.y.min(end_2d.y));
                     let selection = Rect2::new(point.to_point(), size.to_size());
 
+                    for (entity, _) in unit_positions.iter_entities(world) {
+                        cmd.remove_tag::<Selected>(entity);
+                    }
+
                     for (entity, unit_pos) in unit_positions.iter_entities(world) {
                         let unit_pos_2d = Vector2::new(unit_pos.0.x, unit_pos.0.z);
                         if selection.contains(unit_pos_2d.to_point()) {
@@ -85,13 +90,13 @@ fn select_units() -> Box<dyn Runnable> {
         })
 }
 
-fn player_find_destination() -> Box<dyn Runnable> {
+fn player_find_destinations() -> Box<dyn Runnable> {
     SystemBuilder::new("player find destination")
         .read_resource::<Camera>()
         .write_resource::<MouseButton>()
         .read_resource::<MousePos>()
-        .with_query(<Read<Unit>>::query().filter(tag::<Selected>()))
-        .build_thread_local(|cmd, world, resources, query| {
+        .with_query(<Read<Pos>>::query().filter(tag::<Selected>()))
+        .build_thread_local(|cmd, world, resources, positions| {
             let (camera, mouse_btn, mouse_pos) = resources;
 
             if !mouse_btn.button_pressed(RMB) {
@@ -100,19 +105,31 @@ fn player_find_destination() -> Box<dyn Runnable> {
 
             mouse_btn.consume();
 
-            let pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH, 1) {
+            let dest_pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH, 1) {
                 Some(p) => p,
                 None => return,
             };
 
-            for (entity, _) in query.iter_entities(world) {
-                cmd.add_component(entity, Destination(pos));
+            let mut positions_sorted = positions.iter_entities(world).map(|(ent, pos)| (ent, pos.0)).collect::<Vec<_>>();
+            positions_sorted.sort_by(|a, b| {
+                let a_len = (a.1 - dest_pos).length();
+                let b_len = (b.1 - dest_pos).length();
+                b_len.partial_cmp(&a_len).unwrap()
+            });
+
+            let mut prev_dest = dest_pos;
+            while let Some((ent, pos)) = positions_sorted.pop() {
+                cmd.add_component(ent, Destination(prev_dest));
+                let direction = (dest_pos - pos).normalize();
+                let offset = direction * OFFSET_MUL;
+                prev_dest -= offset;
             }
         })
 }
 
+
 pub fn player_systems(builder: Builder) -> Builder {
     builder
         .add_thread_local(select_units())
-        .add_thread_local(player_find_destination())
+        .add_thread_local(player_find_destinations())
 }

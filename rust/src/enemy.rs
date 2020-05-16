@@ -21,7 +21,6 @@ fn detect_player() -> Box<dyn Runnable> {
                     let dist = (*player_pos - pos.0).length();
                     if dist <= detection.0 {
                         // Player in range
-                        eprintln!("{:?}", "player in range!");
                     }
                 }
             }

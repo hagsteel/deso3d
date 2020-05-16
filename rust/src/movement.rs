@@ -1,18 +1,20 @@
+use euclid::Rotation3D as Rot3D;
+use euclid::{Angle, Transform3D, UnknownUnit};
 use gdextras::movement::Move3D;
 use gdnative::Vector3;
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
-use euclid::Rotation3D as Rot3D;
-use euclid::{Transform3D, UnknownUnit, Angle};
 use serde::{Deserialize, Serialize};
 
-use crate::unit::Unit;
 use crate::gameworld::Delta;
+use crate::unit::Unit;
+use crate::player::PlayerId;
 
 type Transform3 = Transform3D<f32, UnknownUnit, UnknownUnit>;
 pub type Rotation3 = Rot3D<f32, UnknownUnit, UnknownUnit>;
 
 const GRAVITY: f32 = 100.;
+const SEPARATION: f32 = 10.;
 
 fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3) {
     let cols = trans.to_column_arrays();
@@ -22,6 +24,13 @@ fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3
 
     (v1, v2, v3)
 }
+
+// -----------------------------------------------------------------------------
+//     - Behavior -
+// -----------------------------------------------------------------------------
+// *  Units should all move in unison [solved]
+// *  Units should not try to occupy the same space
+// *  Units should have a separation force applied while moving
 
 // -----------------------------------------------------------------------------
 //     - Components -
@@ -94,10 +103,11 @@ fn rotate_unit() -> Box<dyn Runnable> {
 
 fn move_units() -> Box<dyn Runnable> {
     SystemBuilder::new("move units")
-        .with_query(<(Write<Pos>, Write<Unit>, Read<Velocity>)>::query())
+        .with_query(<(Write<Pos>, Write<Unit>, Write<Velocity>)>::query())
         .build_thread_local(|_, world, _, units| {
-            for (mut pos, mut unit, velocity) in units.iter_mut(world) {
-                unit.inner.move_and_slide_default(velocity.0, Vector3::new(0., 1., 0.));
+            for (mut pos, mut unit, mut velocity) in units.iter_mut(world) {
+                velocity.0 = unit.inner
+                    .move_and_slide_default(velocity.0, Vector3::new(0., 1., 0.));
                 pos.0 = unit.translation();
             }
         })
@@ -108,18 +118,49 @@ fn done_moving() -> Box<dyn Runnable> {
         .with_query(<(Read<Destination>, Read<Pos>, Write<Velocity>)>::query())
         .build_thread_local(|cmd, world, _, units| {
             for (entity, (dest, pos, mut velocity)) in units.iter_entities_mut(world) {
-                if (dest.0 - pos.0).length() < 2.5 {
+                if (dest.0 - pos.0).length() < 1.2 {
                     cmd.remove_component::<Destination>(entity);
                     velocity.0 = Vector3::zero();
                 }
             }
-    })
+        })
+}
+
+fn apply_separation() -> Box<dyn Runnable> {
+    SystemBuilder::new("apply separation")
+        .with_query(<(Read<Pos>, Write<Velocity>)>::query())
+        .build_thread_local(|cmd, world, resources, query| {
+            let all_positions = query.iter_mut(world).map(|(pos, _)| pos.0).collect::<Vec<_>>();
+            let dist_threshold = 3.;
+            for (pos, mut vel) in query.iter_mut(world) {
+                let mut count = 0;
+                let mut sep_force = Vector3::zero();
+
+                for other_pos in &all_positions {
+                    let diff = pos.0 - *other_pos;
+                    let dist = diff.length();
+                    if dist == 0. {
+                        continue
+                    }
+
+                    if dist <= dist_threshold {
+                        sep_force += diff;
+                        count += 1;
+                    }
+                }
+
+                if count > 0 {
+                    // vel.0 += (sep_force / count as f32) * 10.5;
+                }
+            }
+        })
 }
 
 pub fn movement_systems(builder: Builder) -> Builder {
     builder
         .add_thread_local(apply_directional_velocity())
         .add_thread_local(apply_gravity())
+        .add_thread_local(apply_separation())
         .add_thread_local(rotate_unit())
         .add_thread_local(move_units())
         .add_thread_local(done_moving())

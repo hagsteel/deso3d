@@ -10,7 +10,7 @@ use legion::prelude::*;
 use std::sync::Mutex;
 
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
-use crate::enemy::{enemy_systems, Enemy, DetectionRange};
+use crate::enemy::{enemy_systems, DetectionRange, Enemy};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
 use crate::movement::{movement_systems, Pos, Speed, Velocity};
 use crate::player::{player_systems, PlayerId};
@@ -132,7 +132,12 @@ impl GameWorld {
             with_world(|world| {
                 world.insert(
                     (PlayerId::new(x as u8),),
-                    Some((Unit::new(unit), Velocity(Vector3::zero()), speed, Pos(pos))),
+                    Some((
+                        Unit::new(unit),
+                        Velocity(Vector3::zero()),
+                        speed,
+                        Pos(pos),
+                    )),
                 );
             });
         }
