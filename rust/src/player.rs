@@ -8,7 +8,7 @@ use crate::input::{MouseButton, MousePos, LMB, RMB};
 use crate::movement::{Destination, Pos};
 use crate::unit::Unit;
 
-const OFFSET_MUL: f32 = 3.0;
+const OFFSET_MUL: f32 = 5.0;
 
 // -----------------------------------------------------------------------------
 //     - Tags -

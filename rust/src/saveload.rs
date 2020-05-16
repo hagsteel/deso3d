@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::gameworld::with_world;
 use crate::player::PlayerId;
 // use crate::unit::{Hitpoints, UnitPos, Speed};
-use crate::movement::{Speed, Pos};
+use crate::movement::{MaxSpeed, Pos};
 // use crate::enemy::Enemy;
 
 fn file_path(slot: u8) -> Result<PathBuf> {
@@ -26,7 +26,7 @@ type PlayerUnitData = (
     // AttackRange,
     // AttackCooldown,
     // AttackResponse,
-    Speed,
+    MaxSpeed,
 );
 
 type PlayerUnitDataQuery = (
@@ -36,7 +36,7 @@ type PlayerUnitDataQuery = (
     // Read<AttackRange>,
     // Read<AttackCooldown>,
     // Read<AttackResponse>,
-    Read<Speed>,
+    Read<MaxSpeed>,
 );
 
 // type EnemyUnitData = (
@@ -46,7 +46,7 @@ type PlayerUnitDataQuery = (
 //     AttackRange,
 //     AttackCooldown,
 //     AttackResponse,
-//     Speed,
+//     MaxSpeed,
 // );
 
 // type EnemyUnitDataQuery = (
@@ -56,7 +56,7 @@ type PlayerUnitDataQuery = (
 //     Read<AttackRange>,
 //     Read<AttackCooldown>,
 //     Read<AttackResponse>,
-//     Read<Speed>,
+//     Read<MaxSpeed>,
 // );
 
 #[derive(Debug, Serialize, Deserialize)]

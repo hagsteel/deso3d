@@ -3,7 +3,7 @@
 [ext_resource path="res://mu.tscn" type="PackedScene" id=1]
 
 [sub_resource type="CapsuleShape" id=1]
-radius = 0.8
+radius = 2.0
 
 [node name="Unit" type="KinematicBody"]
 

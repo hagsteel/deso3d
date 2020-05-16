@@ -12,7 +12,7 @@ use std::sync::Mutex;
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
 use crate::enemy::{enemy_systems, DetectionRange, Enemy};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
-use crate::movement::{movement_systems, Pos, Speed, Velocity};
+use crate::movement::{movement_systems, Pos, MaxSpeed, Velocity, Forces, Acceleration};
 use crate::player::{player_systems, PlayerId};
 use crate::saveload;
 use crate::spawner;
@@ -54,6 +54,9 @@ where
 // -----------------------------------------------------------------------------
 pub struct Delta(pub f32);
 
+pub struct A(pub f64);
+pub struct B(pub f64);
+
 // -----------------------------------------------------------------------------
 //     - Godot node -
 // -----------------------------------------------------------------------------
@@ -78,6 +81,8 @@ impl GameWorld {
         resources.insert(Coords::new());
         resources.insert(Keyboard::new());
         resources.insert(Drag::Empty);
+        resources.insert(A(1.0));
+        resources.insert(B(1.0));
 
         Self {
             resources,
@@ -114,9 +119,9 @@ impl GameWorld {
         self.resources.insert(SelectionBox(selection_box));
 
         // Player unit
-        for x in 15..18 {
+        for x in 15..19 {
             let x = x as f32 * 4.;
-            let y = 12.;
+            let y = 2.;
             let z = 10.;
 
             let mut unit = spawner::spawn_unit();
@@ -127,7 +132,7 @@ impl GameWorld {
 
             let pos = unsafe { unit.get_translation() };
 
-            let speed = Speed(10f32);
+            let speed = MaxSpeed(10f32);
 
             with_world(|world| {
                 world.insert(
@@ -137,12 +142,14 @@ impl GameWorld {
                         Velocity(Vector3::zero()),
                         speed,
                         Pos(pos),
+                        Forces::zero(),
+                        Acceleration(Vector3::zero())
                     )),
                 );
             });
         }
 
-        for x in 15..16 {
+        for x in 15..15 {
             let x = x as f32 * 4.;
             let y = 12.;
             let z = 26.;
@@ -155,7 +162,7 @@ impl GameWorld {
 
             let pos = unsafe { unit.get_translation() };
 
-            let speed = Speed(10f32);
+            let speed = MaxSpeed(10f32);
 
             with_world(|world| {
                 world.insert(
@@ -166,6 +173,8 @@ impl GameWorld {
                         speed,
                         Pos(pos),
                         DetectionRange(10.),
+                        Forces::zero(),
+                        Acceleration(Vector3::zero())
                     )),
                 );
             });
@@ -249,5 +258,15 @@ impl GameWorld {
         with_world(|world| {
             self.physics.execute(world, &mut self.resources);
         });
+    }
+
+    #[export]
+    pub fn a_value_changed(&mut self, _: Spatial, value: f64) {
+        self.resources.get_mut::<A>().map(|mut a| a.0 = value);
+    }
+
+    #[export]
+    pub fn b_value_changed(&self, _: Spatial, value: f64) {
+        self.resources.get_mut::<B>().map(|mut b| b.0 = value);
     }
 }
