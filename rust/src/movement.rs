@@ -1,20 +1,19 @@
 use euclid::Rotation3D as Rot3D;
 use euclid::{Angle, Transform3D, UnknownUnit};
 use gdextras::movement::Move3D;
-use gdnative::Vector3;
+use gdnative::{Vector2, Vector3};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 use serde::{Deserialize, Serialize};
 
 use crate::gameworld::{Delta, A, B};
-use crate::player::PlayerId;
 use crate::unit::Unit;
 
 type Transform3 = Transform3D<f32, UnknownUnit, UnknownUnit>;
 pub type Rotation3 = Rot3D<f32, UnknownUnit, UnknownUnit>;
 
 const GRAVITY: Vector3 = Vector3::new(0., -10., 0.);
-const EPSILON: f32 = 1e-3;
+const EPSILON: f32 = 1e-1;
 
 fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3) {
     let cols = trans.to_column_arrays();
@@ -23,6 +22,14 @@ fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3
     let v3 = Vector3::new(cols[2][0], cols[2][1], cols[2][2]);
 
     (v1, v2, v3)
+}
+
+fn to_2d(v: Vector3) -> Vector2 {
+    Vector2::new(v.x, v.z)
+}
+
+fn to_3d(v: Vector2) -> Vector3 {
+    Vector3::new(v.x, 0., v.y)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -99,13 +106,20 @@ fn apply_forces() -> Box<dyn Runnable> {
         })
 }
 
-const A: f32 = 1f32;
-const B: f32 = -1f32;
+fn map_val(x: f32, in_min: f32, in_max: f32, out_min: f32, out_max: f32) -> f32 {
+    (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+}
+
+fn map_vec(v: Vector2, in_min: f32, in_max: f32, out_min: f32, out_max: f32) -> Vector2 {
+    Vector2::new(
+        map_val(v.x, in_min, in_max, out_min, out_max),
+        map_val(v.y, in_min, in_max, out_min, out_max),
+    )
+}
 
 fn seek() -> Box<dyn Runnable> {
     SystemBuilder::new("apply directional velocity")
-        .read_resource::<A>()
-        .read_resource::<B>()
+        .read_resource::<Delta>()
         .with_query(<(
             Read<MaxSpeed>,
             Read<Pos>,
@@ -113,38 +127,54 @@ fn seek() -> Box<dyn Runnable> {
             Write<Forces>,
             Read<Velocity>,
         )>::query())
-        .build_thread_local(|cmd, world, (a, b), query| {
+        .build_thread_local(|cmd, world, delta, query| {
             for (ent, (max_speed, pos, dest, mut forces, velocity)) in
                 query.iter_entities_mut(world)
             {
-                let diff = dest.0 - pos.0;
-                let direction = diff.normalize();
+                let mut diff = to_2d(dest.0 - pos.0);
                 let dist = diff.length();
 
-                let attractive = A / dist.powf(2.);
-                let repulsive = B / dist.powf(10.);
+                diff += diff.normalize() * max_speed.0;
+                forces.seek = to_3d(diff);
 
-                if dist <= max_speed.0 {
-                    // forces.seek = -velocity.0 / (dist * max_speed.0);
-                    forces.seek = direction * (attractive + repulsive);
-                } else {
-                    forces.seek = diff.with_max_length(max_speed.0);
-                }
+                // let attraction = a.0 / dist.powf(2.);
+                // let repulsive = b.0 / dist.powf(5.);
+                // eprintln!("{:?}", velocity.0.normalize(), direction);
+                // forces.seek = direction * attractive + velocity.0 * repulsive;
 
-                forces.seek.y = 0.;
+                //direction * (attractive + repulsive);
+
+                // various forces -> acceleration -> added to the velocity
+
+                // velocity.0 / (dist * max_speed)
+
+                // if dist <= 2. {
+                //     eprintln!("huzzah: {}", dist);
+                //     forces.seek = to_3d(direction) * attraction + to_3d(direction) * velocity.0.length() * repulsive;
+                // } else if dist <= 5. {
+                //     // forces.seek = direction * attraction + direction * velocity.0.length() * repulsive;
+                //     eprintln!("{:?}", dist);
+                // } else {
+                //     forces.seek = to_3d(diff).with_max_length(max_speed.0);
+                // }
+
+                // forces.seek.y = 0.; // redundant
             }
         })
 }
 
 fn move_units() -> Box<dyn Runnable> {
     SystemBuilder::new("move units")
-        .with_query(<(
-            Write<Pos>,
-            Write<Unit>,
-            Write<Velocity>,
-            Read<Acceleration>,
-            Read<MaxSpeed>,
-        )>::query())
+        .with_query(
+            <(
+                Write<Pos>,
+                Write<Unit>,
+                Write<Velocity>,
+                Read<Acceleration>,
+                Read<MaxSpeed>,
+            )>::query()
+            .filter(component::<Destination>()),
+        )
         .build_thread_local(|_, world, _, units| {
             for (mut pos, mut unit, mut velocity, acc, max_speed) in units.iter_mut(world) {
                 velocity.0 += acc.0;
@@ -189,12 +219,13 @@ fn done_moving() -> Box<dyn Runnable> {
     SystemBuilder::new("done_moving")
         .with_query(<(Read<Pos>, Read<Destination>, Read<Velocity>)>::query())
         .build_thread_local(|cmd, world, resources, query| {
-            for (pos, dest, vel) in query.iter(world) {
-                let dist = (pos.0 - dest.0).length();
+            for (ent, (pos, dest, vel)) in query.iter_entities(world) {
+                let dist = to_2d(pos.0 - dest.0).length();
                 if dist < EPSILON && dist > -EPSILON {
                     eprintln!("{:?}", "done");
+                    cmd.remove_component::<Destination>(ent);
                 } else {
-                    eprintln!("{:?}", dist);
+                    eprintln!("{}", dist);
                 }
             }
         })
@@ -207,7 +238,6 @@ pub fn movement_systems(builder: Builder) -> Builder {
         .add_thread_local(seek())
         .add_thread_local(apply_forces())
         // .add_thread_local(apply_directional_velocity())
-        // .add_thread_local(apply_gravity())
         // .add_thread_local(apply_separation())
         .add_thread_local(rotate_unit())
         .add_thread_local(move_units())

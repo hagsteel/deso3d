@@ -54,8 +54,8 @@ where
 // -----------------------------------------------------------------------------
 pub struct Delta(pub f32);
 
-pub struct A(pub f64);
-pub struct B(pub f64);
+pub struct A(pub f32);
+pub struct B(pub f32);
 
 // -----------------------------------------------------------------------------
 //     - Godot node -
@@ -261,12 +261,18 @@ impl GameWorld {
     }
 
     #[export]
-    pub fn a_value_changed(&mut self, _: Spatial, value: f64) {
-        self.resources.get_mut::<A>().map(|mut a| a.0 = value);
+    pub fn a_value_changed(&mut self, owner: Spatial, value: f64) {
+        self.resources.get_mut::<A>().map(|mut a| a.0 = value as f32);
+        let mut label = owner.get_and_cast::<Label>("UI/Panel/Aval").unwrap();
+        let text = format!("A: {}", value);
+        unsafe { label.set_text(text.into()) };
     }
 
     #[export]
-    pub fn b_value_changed(&self, _: Spatial, value: f64) {
-        self.resources.get_mut::<B>().map(|mut b| b.0 = value);
+    pub fn b_value_changed(&self, owner: Spatial, value: f64) {
+        self.resources.get_mut::<B>().map(|mut b| b.0 = value as f32);
+        let mut label = owner.get_and_cast::<Label>("UI/Panel/Bval").unwrap();
+        let text = format!("B: {}", value);
+        unsafe { label.set_text(text.into()) };
     }
 }
