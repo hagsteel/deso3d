@@ -6,7 +6,7 @@ use legion::prelude::*;
 use legion::systems::schedule::Builder;
 use serde::{Deserialize, Serialize};
 
-use crate::gameworld::{Delta, A, B};
+use crate::gameworld::Delta;
 use crate::unit::Unit;
 
 type Transform3 = Transform3D<f32, UnknownUnit, UnknownUnit>;
@@ -106,17 +106,6 @@ fn apply_forces() -> Box<dyn Runnable> {
         })
 }
 
-fn map_val(x: f32, in_min: f32, in_max: f32, out_min: f32, out_max: f32) -> f32 {
-    (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
-}
-
-fn map_vec(v: Vector2, in_min: f32, in_max: f32, out_min: f32, out_max: f32) -> Vector2 {
-    Vector2::new(
-        map_val(v.x, in_min, in_max, out_min, out_max),
-        map_val(v.y, in_min, in_max, out_min, out_max),
-    )
-}
-
 fn seek() -> Box<dyn Runnable> {
     SystemBuilder::new("apply directional velocity")
         .read_resource::<Delta>()
@@ -127,9 +116,8 @@ fn seek() -> Box<dyn Runnable> {
             Write<Forces>,
             Read<Velocity>,
         )>::query())
-        .build_thread_local(|cmd, world, delta, query| {
-            for (ent, (max_speed, pos, dest, mut forces, velocity)) in
-                query.iter_entities_mut(world)
+        .build_thread_local(|_, world, delta, query| {
+            for (max_speed, pos, dest, mut forces, velocity) in query.iter_mut(world)
             {
                 let mut diff = to_2d(dest.0 - pos.0);
                 let dist = diff.length();
