@@ -57,53 +57,6 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="Aval" type="Label" parent="UI/Panel"]
-margin_left = 339.643
-margin_top = 10.0
-margin_right = 548.643
-margin_bottom = 48.0
-custom_fonts/font = ExtResource( 2 )
-text = "A:"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="Bval" type="Label" parent="UI/Panel"]
-margin_left = 612.926
-margin_top = 10.0
-margin_right = 821.926
-margin_bottom = 48.0
-custom_fonts/font = ExtResource( 2 )
-text = "B:"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="A" type="HSlider" parent="UI"]
-margin_left = 16.0
-margin_top = 96.0
-margin_right = 244.0
-margin_bottom = 112.0
-rect_scale = Vector2( 3, 3 )
-min_value = -10000.0
-max_value = 10000.0
-value = 2.0
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="B" type="HSlider" parent="UI"]
-margin_left = 15.2056
-margin_top = 166.704
-margin_right = 243.206
-margin_bottom = 182.704
-rect_scale = Vector2( 3, 3 )
-min_value = -1e+06
-max_value = 1e+06
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
 [node name="GridMap" type="GridMap" parent="."]
 mesh_library = ExtResource( 3 )
 cell_center_y = false
@@ -129,5 +82,3 @@ material/0 = SubResource( 5 )
 
 [node name="CollisionShape" type="CollisionShape" parent="UnitSelectionArea"]
 shape = SubResource( 6 )
-[connection signal="value_changed" from="UI/A" to="." method="a_value_changed"]
-[connection signal="value_changed" from="UI/B" to="." method="b_value_changed"]

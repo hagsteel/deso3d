@@ -13,7 +13,7 @@ type Transform3 = Transform3D<f32, UnknownUnit, UnknownUnit>;
 pub type Rotation3 = Rot3D<f32, UnknownUnit, UnknownUnit>;
 
 const GRAVITY: Vector3 = Vector3::new(0., -10., 0.);
-const EPSILON: f32 = 1e-1;
+const EPSILON: f32 = 1e-6;
 
 fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3) {
     let cols = trans.to_column_arrays();
@@ -133,32 +133,15 @@ fn seek() -> Box<dyn Runnable> {
             {
                 let mut diff = to_2d(dest.0 - pos.0);
                 let dist = diff.length();
+                let future_dist = (pos.0 + velocity.0 * delta.0 - dest.0).length();
 
-                diff += diff.normalize() * max_speed.0;
-                forces.seek = to_3d(diff);
-
-                // let attraction = a.0 / dist.powf(2.);
-                // let repulsive = b.0 / dist.powf(5.);
-                // eprintln!("{:?}", velocity.0.normalize(), direction);
-                // forces.seek = direction * attractive + velocity.0 * repulsive;
-
-                //direction * (attractive + repulsive);
-
-                // various forces -> acceleration -> added to the velocity
-
-                // velocity.0 / (dist * max_speed)
-
-                // if dist <= 2. {
-                //     eprintln!("huzzah: {}", dist);
-                //     forces.seek = to_3d(direction) * attraction + to_3d(direction) * velocity.0.length() * repulsive;
-                // } else if dist <= 5. {
-                //     // forces.seek = direction * attraction + direction * velocity.0.length() * repulsive;
-                //     eprintln!("{:?}", dist);
-                // } else {
-                //     forces.seek = to_3d(diff).with_max_length(max_speed.0);
-                // }
-
-                // forces.seek.y = 0.; // redundant
+                if future_dist >= dist {
+                    let force = to_2d(-velocity.0) + diff / delta.0;
+                    forces.seek = to_3d(force);
+                } else {
+                    diff += diff.normalize() * max_speed.0;
+                    forces.seek = to_3d(diff);
+                }
             }
         })
 }

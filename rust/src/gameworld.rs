@@ -132,7 +132,7 @@ impl GameWorld {
 
             let pos = unsafe { unit.get_translation() };
 
-            let speed = MaxSpeed(10f32);
+            let speed = MaxSpeed(20f32);
 
             with_world(|world| {
                 world.insert(
@@ -258,21 +258,5 @@ impl GameWorld {
         with_world(|world| {
             self.physics.execute(world, &mut self.resources);
         });
-    }
-
-    #[export]
-    pub fn a_value_changed(&mut self, owner: Spatial, value: f64) {
-        self.resources.get_mut::<A>().map(|mut a| a.0 = value as f32);
-        let mut label = owner.get_and_cast::<Label>("UI/Panel/Aval").unwrap();
-        let text = format!("A: {}", value);
-        unsafe { label.set_text(text.into()) };
-    }
-
-    #[export]
-    pub fn b_value_changed(&self, owner: Spatial, value: f64) {
-        self.resources.get_mut::<B>().map(|mut b| b.0 = value as f32);
-        let mut label = owner.get_and_cast::<Label>("UI/Panel/Bval").unwrap();
-        let text = format!("B: {}", value);
-        unsafe { label.set_text(text.into()) };
     }
 }
