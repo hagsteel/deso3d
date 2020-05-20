@@ -29,6 +29,15 @@ impl MouseButton {
             }
         }
     }
+
+    pub fn button_released(&self, index: i64) -> bool {
+        match self {
+            Self::Empty => false,
+            Self::Mouse { pressed, button_index } => {
+                !*pressed && *button_index == index
+            }
+        }
+    }
 }
 
 pub struct MousePos {

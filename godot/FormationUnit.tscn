@@ -3,8 +3,6 @@
 [ext_resource path="res://assets/sprites/formation-unit.png" type="Texture" id=1]
 
 [node name="FormationUnit" type="TextureRect"]
-margin_right = 40.0
-margin_bottom = 40.0
 mouse_filter = 2
 texture = ExtResource( 1 )
 __meta__ = {

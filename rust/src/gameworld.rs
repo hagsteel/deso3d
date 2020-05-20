@@ -5,7 +5,7 @@ use gdnative::{
     godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
     methods, Area, Camera as GodotCamera, CanvasLayer, Color, GridMap, InputEvent, InputEventKey,
     InputEventMouse, InputEventMouseButton, Label, MeshInstance, NativeClass, Performance, Spatial,
-    Vector3, Vector2,
+    Vector3, Vector2, Control
 };
 use lazy_static::lazy_static;
 use legion::prelude::*;
@@ -13,7 +13,7 @@ use std::sync::Mutex;
 
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
 use crate::enemy::{enemy_systems, DetectionRange, Enemy};
-use crate::formation::{FormationUI, FormationUnit, formation_systems};
+use crate::formation::{FormationUI, FormationUnit, formation_systems, FormationMouseState};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
 use crate::movement::{movement_systems, Acceleration, Forces, MaxSpeed, Pos, Velocity};
 use crate::player::{player_systems, PlayerId};
@@ -82,6 +82,7 @@ impl GameWorld {
         resources.insert(Coords::new());
         resources.insert(Keyboard::new());
         resources.insert(Drag::Empty);
+        resources.insert(FormationMouseState::Empty);
 
         Self {
             resources,
@@ -145,7 +146,9 @@ impl GameWorld {
 
             let mut formation_unit = spawner::spawn_formation_unit();
             unsafe {
-                formation_ui.add_child(Some(formation_unit.to_node()), false);
+                formation_ui.get_and_cast::<Control>("Pending").map(|mut p| {
+                    p.add_child(Some(formation_unit.to_node()), false);
+                });
                 formation_unit.set_position(Vector2::new(formation_x, formation_y), false);
             }
 
