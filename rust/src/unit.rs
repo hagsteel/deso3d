@@ -1,4 +1,6 @@
-use gdnative::{KinematicBody, Vector3};
+use gdextras::some_or_bail;
+use gdextras::node_ext::NodeExt;
+use gdnative::{KinematicBody, Vector3, Color, MeshInstance, SpatialMaterial};
 
 // -----------------------------------------------------------------------------
 //     - Components -
@@ -16,6 +18,19 @@ impl Unit {
 
     pub fn translation(&self) -> Vector3 {
         unsafe { self.inner.get_translation() }
+    }
+
+    pub fn set_color(&mut self, color: Color) {
+        unsafe {
+            let mut mesh = some_or_bail!(
+                self.inner.get_and_cast::<MeshInstance>("mu/Mu"),
+                "failed to get Mu"
+            );
+
+            let mut spatial_mat = SpatialMaterial::new();
+            spatial_mat.set_albedo(color);
+            mesh.set_material_override(Some(spatial_mat.to_material()));
+        }
     }
 }
 

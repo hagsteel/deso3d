@@ -94,9 +94,9 @@ fn apply_forces() -> Box<dyn Runnable> {
                 // Add gravity
                 unsafe {
                     if unit.inner.is_on_floor() {
-                        acc.0.y = GRAVITY.y * delta.0;
+                        acc.0.y = GRAVITY.y;
                     } else {
-                        acc.0.y += GRAVITY.y * delta.0;
+                        acc.0.y += GRAVITY.y;
                     }
                 }
 
@@ -193,10 +193,7 @@ fn done_moving() -> Box<dyn Runnable> {
             for (ent, (pos, dest, vel)) in query.iter_entities(world) {
                 let dist = to_2d(pos.0 - dest.0).length();
                 if dist < EPSILON && dist > -EPSILON {
-                    eprintln!("{:?}", "done");
                     cmd.remove_component::<Destination>(ent);
-                } else {
-                    eprintln!("{}", dist);
                 }
             }
         })

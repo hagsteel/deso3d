@@ -6,7 +6,7 @@ use serde::{Serialize, Deserialize};
 use crate::camera::{Camera, Drag, SelectionBox, RAY_LENGTH};
 use crate::input::{MouseButton, MousePos, LMB, RMB};
 use crate::movement::{Destination, Pos};
-use crate::unit::Unit;
+use crate::formation::{create_formation, FormationShape};
 
 const OFFSET_MUL: f32 = 5.0;
 
@@ -110,20 +110,46 @@ fn player_find_destinations() -> Box<dyn Runnable> {
                 None => return,
             };
 
-            let mut positions_sorted = positions.iter_entities(world).map(|(ent, pos)| (ent, pos.0)).collect::<Vec<_>>();
-            positions_sorted.sort_by(|a, b| {
-                let a_len = (a.1 - dest_pos).length();
-                let b_len = (b.1 - dest_pos).length();
-                b_len.partial_cmp(&a_len).unwrap()
-            });
+            let mut formation = create_formation(dest_pos, FormationShape::Square, positions.iter(world).count());
 
-            let mut prev_dest = dest_pos;
-            while let Some((ent, pos)) = positions_sorted.pop() {
-                cmd.add_component(ent, Destination(prev_dest));
-                let direction = (dest_pos - pos).normalize();
-                let offset = direction * OFFSET_MUL;
-                prev_dest -= offset;
+            let positions = positions
+                .iter_entities(world)
+                .map(|(ent, pos)| (ent, pos.0))
+                .collect::<Vec<_>>();
+
+            let mut occupied_dests: Vec<Vector3> = Vec::new();
+            for (ent, position) in &positions {
+                formation.sort_by(|a, b| {
+                    let a = (*a - *position).length();
+                    let b = (*b - *position).length();
+                    a.partial_cmp(&b).unwrap()
+                });
+
+                // let direction = (dest - *position).normalize();
+
+                if let Some(new_dest) = formation
+                    .iter()
+                    .filter(|pos| !occupied_dests.contains(&pos))
+                    .next() {
+
+                    occupied_dests.push(*new_dest);
+                    cmd.add_component(*ent, Destination(*new_dest));
+                }
             }
+
+            // positions_sorted.sort_by(|a, b| {
+            //     let a_len = (a.1 - dest_pos).length();
+            //     let b_len = (b.1 - dest_pos).length();
+            //     b_len.partial_cmp(&a_len).unwrap()
+            // });
+
+            // let mut prev_dest = dest_pos;
+            // while let Some((ent, pos)) = positions_sorted.pop() {
+            //     cmd.add_component(ent, Destination(prev_dest));
+            //     let direction = (dest_pos - pos).normalize();
+            //     let offset = direction * OFFSET_MUL;
+            //     prev_dest -= offset;
+            // }
         })
 }
 

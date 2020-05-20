@@ -12,6 +12,7 @@ mod player;
 mod saveload;
 mod enemy;
 mod main_menu;
+mod formation;
 
 fn init(handle: init::InitHandle) {
     handle.add_class::<gameworld::GameWorld>();

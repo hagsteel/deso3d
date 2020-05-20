@@ -1,9 +1,11 @@
 use gdextras::input::InputEventExt;
 use gdextras::node_ext::NodeExt;
+use gdextras::some_or_bail;
 use gdnative::{
     godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
-    methods, Area, Camera as GodotCamera, GridMap, InputEvent, InputEventKey, InputEventMouse,
-    InputEventMouseButton, Label, MeshInstance, NativeClass, Performance, Spatial, Vector3,
+    methods, Area, Camera as GodotCamera, CanvasLayer, Color, GridMap, InputEvent, InputEventKey,
+    InputEventMouse, InputEventMouseButton, Label, MeshInstance, NativeClass, Performance, Spatial,
+    Vector3, Vector2,
 };
 use lazy_static::lazy_static;
 use legion::prelude::*;
@@ -11,8 +13,9 @@ use std::sync::Mutex;
 
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
 use crate::enemy::{enemy_systems, DetectionRange, Enemy};
+use crate::formation::{FormationUI, FormationUnit, formation_systems};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
-use crate::movement::{movement_systems, Pos, MaxSpeed, Velocity, Forces, Acceleration};
+use crate::movement::{movement_systems, Acceleration, Forces, MaxSpeed, Pos, Velocity};
 use crate::player::{player_systems, PlayerId};
 use crate::saveload;
 use crate::spawner;
@@ -31,6 +34,7 @@ fn setup_schedule() -> Schedule {
     let builder = enemy_systems(builder);
     let builder = player_systems(builder);
     let builder = camera_systems(builder);
+    let builder = formation_systems(builder);
     builder.build()
 }
 
@@ -53,9 +57,6 @@ where
 //     - Resources -
 // -----------------------------------------------------------------------------
 pub struct Delta(pub f32);
-
-pub struct A(pub f32);
-pub struct B(pub f32);
 
 // -----------------------------------------------------------------------------
 //     - Godot node -
@@ -81,8 +82,6 @@ impl GameWorld {
         resources.insert(Coords::new());
         resources.insert(Keyboard::new());
         resources.insert(Drag::Empty);
-        resources.insert(A(1.0));
-        resources.insert(B(1.0));
 
         Self {
             resources,
@@ -118,13 +117,40 @@ impl GameWorld {
             .expect("failed to get selection box");
         self.resources.insert(SelectionBox(selection_box));
 
+        // Formation UI
+        let mut formation_ui = spawner::spawn_formation_ui();
+        let mut ui = some_or_bail!(owner.get_and_cast::<CanvasLayer>("UI"), "wrong UI node");
+        unsafe { ui.add_child(Some(formation_ui.to_node()), false) };
+        self.resources.insert(FormationUI::new(formation_ui));
+
+        let colors = [
+            Color::rgb(1., 0., 0.),
+            Color::rgb(0., 1., 0.),
+            Color::rgb(0., 0., 1.),
+            Color::rgb(1., 1., 0.),
+        ];
+
         // Player unit
-        for x in 15..19 {
-            let x = x as f32 * 4.;
+        for i in 0..4 {
+            let color_index = i;
+            let color = colors[color_index];
+
+            // TODO: remove this
+            let formation_x = (16 * 5) as f32;
+            let formation_y = (i as f32) * 16.;
+
+            let x = (i as f32 + 15.) * 4.;
             let y = 2.;
             let z = 10.;
 
+            let mut formation_unit = spawner::spawn_formation_unit();
+            unsafe {
+                formation_ui.add_child(Some(formation_unit.to_node()), false);
+                formation_unit.set_position(Vector2::new(formation_x, formation_y), false);
+            }
+
             let mut unit = spawner::spawn_unit();
+
             unsafe {
                 owner.add_child(Some(unit.to_node()), false);
                 unit.set_translation(Vector3::new(x, y, z));
@@ -132,18 +158,25 @@ impl GameWorld {
 
             let pos = unsafe { unit.get_translation() };
 
+            let mut unit = Unit::new(unit);
+            unit.set_color(color);
+
+            let mut formation_unit = FormationUnit::new(formation_unit);
+            formation_unit.set_color(color);
+
             let speed = MaxSpeed(20f32);
 
             with_world(|world| {
                 world.insert(
                     (PlayerId::new(x as u8),),
                     Some((
-                        Unit::new(unit),
+                        unit,
                         Velocity(Vector3::zero()),
                         speed,
                         Pos(pos),
                         Forces::zero(),
-                        Acceleration(Vector3::zero())
+                        Acceleration(Vector3::zero()),
+                        formation_unit,
                     )),
                 );
             });
@@ -174,7 +207,7 @@ impl GameWorld {
                         Pos(pos),
                         DetectionRange(10.),
                         Forces::zero(),
-                        Acceleration(Vector3::zero())
+                        Acceleration(Vector3::zero()),
                     )),
                 );
             });
