@@ -101,32 +101,29 @@ impl FormationUnit {
 unsafe impl Send for FormationUnit {}
 unsafe impl Sync for FormationUnit {}
 
-pub enum FormationMouseState {
-    Empty,
-    Start(Vector2),
-}
-
-impl FormationMouseState {
-    fn clear(&mut self) {
-        *self = FormationMouseState::Empty;
-    }
-
-    fn start(&mut self, pos: Vector2) {
-        *self = FormationMouseState::Start(pos);
-    }
-}
-
 // -----------------------------------------------------------------------------
 //     - Components -
 // -----------------------------------------------------------------------------
 #[derive(Debug)]
 pub struct FormationPos(Vector2);
 
-#[derive(Debug, Clone, Copy)]
-struct StartDrag(Vector2);
+impl FormationPos {
+    pub fn new(pos: Vector2) -> Self {
+        Self(pos)
+    }
+}
 
 #[derive(Debug)]
 pub struct FormationOrder(u8);
+
+impl FormationOrder {
+    pub fn new(index: u8) -> Self {
+        Self(index)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct StartDrag(Vector2);
 
 // -----------------------------------------------------------------------------
 //     - Systems -
@@ -216,10 +213,9 @@ fn deselect_formation_unit() -> Box<dyn Runnable> {
 
 fn drag_formation_unit() -> Box<dyn Runnable> {
     SystemBuilder::new("drag formation unit")
-        .write_resource::<MouseButton>()
         .read_resource::<FormationUI>()
         .with_query(<Write<FormationUnit>>::query().filter(tag::<FormationUnitSelected>()))
-        .build_thread_local(|cmd, world, (mouse_btn, formation_ui), units| unsafe {
+        .build_thread_local(|_, world, formation_ui, units| unsafe {
             for mut unit in units.iter_mut(world) {
                 let rect = unit.0.get_rect();
                 let mouse_pos =

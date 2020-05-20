@@ -13,7 +13,7 @@ use std::sync::Mutex;
 
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
 use crate::enemy::{enemy_systems, DetectionRange, Enemy};
-use crate::formation::{FormationUI, FormationUnit, formation_systems, FormationMouseState};
+use crate::formation::{FormationUI, FormationUnit, formation_systems, FormationPos, FormationOrder};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
 use crate::movement::{movement_systems, Acceleration, Forces, MaxSpeed, Pos, Velocity};
 use crate::player::{player_systems, PlayerId};
@@ -25,7 +25,6 @@ use crate::unit::Unit;
 fn setup_physics_schedule() -> Schedule {
     let builder = Schedule::builder();
     let builder = movement_systems(builder);
-
     builder.build()
 }
 
@@ -82,7 +81,6 @@ impl GameWorld {
         resources.insert(Coords::new());
         resources.insert(Keyboard::new());
         resources.insert(Drag::Empty);
-        resources.insert(FormationMouseState::Empty);
 
         Self {
             resources,
@@ -119,7 +117,7 @@ impl GameWorld {
         self.resources.insert(SelectionBox(selection_box));
 
         // Formation UI
-        let mut formation_ui = spawner::spawn_formation_ui();
+        let formation_ui = spawner::spawn_formation_ui();
         let mut ui = some_or_bail!(owner.get_and_cast::<CanvasLayer>("UI"), "wrong UI node");
         unsafe { ui.add_child(Some(formation_ui.to_node()), false) };
         self.resources.insert(FormationUI::new(formation_ui));
@@ -137,7 +135,7 @@ impl GameWorld {
             let color = colors[color_index];
 
             // TODO: remove this
-            let formation_x = (16 * 5) as f32;
+            let formation_x = 0.;
             let formation_y = (i as f32) * 16.;
 
             let x = (i as f32 + 15.) * 4.;
@@ -180,6 +178,8 @@ impl GameWorld {
                         Forces::zero(),
                         Acceleration(Vector3::zero()),
                         formation_unit,
+                        FormationPos::new(Vector2::new(0., i as f32)),
+                        FormationOrder::new(i as u8),
                     )),
                 );
             });
