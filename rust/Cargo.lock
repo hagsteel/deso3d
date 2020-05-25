@@ -56,6 +56,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 
 [[package]]
+name = "bitter"
+version = "0.1.0"
+
+[[package]]
 name = "bracket-algorithm-traits"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -209,6 +213,7 @@ name = "deso3d"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "bitter",
  "bracket-pathfinding",
  "euclid",
  "gdextras",
@@ -235,9 +240,9 @@ checksum = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
 
 [[package]]
 name = "euclid"
-version = "0.20.11"
+version = "0.20.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "667703ececa1ac04d1d40ae0c0fd6401b91d8caccfda3a65458ca8ee5dfedf1c"
+checksum = "fcd37b6fb81980fef9414fed08672635f65d7f0e23385d06787bc99db89b4a46"
 dependencies = [
  "num-traits",
  "serde",

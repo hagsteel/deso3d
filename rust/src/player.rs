@@ -2,13 +2,16 @@ use gdnative::{Rect2, Vector2, Vector3};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 use serde::{Serialize, Deserialize};
+use euclid::{Rotation2D, UnknownUnit};
 
 use crate::camera::{Camera, Drag, SelectionBox, RAY_LENGTH};
 use crate::input::{MouseButton, MousePos, LMB, RMB};
-use crate::movement::{Destination, Pos};
-use crate::formation::create_formation;
+use crate::movement::{Destination, Pos, to_3d, to_2d};
+use crate::formation::{FormationPos, index_to_x_y};
 
-const OFFSET_MUL: f32 = 5.0;
+type Rotation2 = Rotation2D<f32, UnknownUnit, UnknownUnit>;
+
+const OFFSET_MUL: f32 = 4.0;
 
 // -----------------------------------------------------------------------------
 //     - Tags -
@@ -95,7 +98,7 @@ fn player_find_destinations() -> Box<dyn Runnable> {
         .read_resource::<Camera>()
         .write_resource::<MouseButton>()
         .read_resource::<MousePos>()
-        .with_query(<Read<Pos>>::query().filter(tag::<Selected>()))
+        .with_query(<(Read<Pos>, Read<FormationPos>)>::query().filter(tag::<Selected>()))
         .build_thread_local(|cmd, world, resources, positions| {
             let (camera, mouse_btn, mouse_pos) = resources;
 
@@ -110,31 +113,43 @@ fn player_find_destinations() -> Box<dyn Runnable> {
                 None => return,
             };
 
-            let mut formation = create_formation(dest_pos, positions.iter(world).count());
-
             let positions = positions
                 .iter_entities(world)
-                .map(|(ent, pos)| (ent, pos.0))
+                .map(|(ent, (pos, formation_pos))| (ent, pos.0, formation_pos.0))
                 .collect::<Vec<_>>();
 
-            let mut occupied_dests: Vec<Vector3> = Vec::new();
-            for (ent, position) in &positions {
-                formation.sort_by(|a, b| {
-                    let a = (*a - *position).length();
-                    let b = (*b - *position).length();
-                    a.partial_cmp(&b).unwrap()
-                });
+            let (offset, rotation) = {
+                let mut offset_x = 0;
+                let mut offset_y = 0;
+                let mut dir = Vector2::zero();
 
-                // let direction = (dest - *position).normalize();
+                // Find the max x and the correct y
+                for (_, pos, formation_pos) in &positions {
+                    let (x, y) = index_to_x_y(*formation_pos as usize);
 
-                if let Some(new_dest) = formation
-                    .iter()
-                    .filter(|pos| !occupied_dests.contains(&pos))
-                    .next() {
-
-                    occupied_dests.push(*new_dest);
-                    cmd.add_component(*ent, Destination(*new_dest));
+                    if x > offset_x {
+                        offset_x = x;
+                        offset_y = y;
+                        dir = to_2d(dest_pos - *pos);
+                    }
+                    if y > offset_y {
+                        offset_y = y;
+                        dir = to_2d(dest_pos - *pos);
+                    }
                 }
+
+                (
+                    Vector2::new(offset_x as f32, offset_y as f32),
+                    Rotation2::radians(dir.y.atan2(dir.x))
+                )
+            };
+
+            for (ent, _, formation_pos) in &positions {
+                let (x, y) = index_to_x_y(*formation_pos as usize);
+                let formation_pos = (Vector2::new(x as f32, y as f32) - offset) * OFFSET_MUL;
+                let formation_pos = rotation.transform_vector(formation_pos);
+                let new_dest = dest_pos + to_3d(formation_pos);
+                cmd.add_component(*ent, Destination(new_dest));
             }
         })
 }

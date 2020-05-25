@@ -13,7 +13,7 @@ use std::sync::Mutex;
 
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
 use crate::enemy::{enemy_systems, DetectionRange, Enemy};
-use crate::formation::{FormationUI, FormationUnit, formation_systems, FormationPos, FormationOrder};
+use crate::formation::{FormationUI, FormationUnit, formation_systems, Formation};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
 use crate::movement::{movement_systems, Acceleration, Forces, MaxSpeed, Pos, Velocity};
 use crate::player::{player_systems, PlayerId};
@@ -81,6 +81,7 @@ impl GameWorld {
         resources.insert(Coords::new());
         resources.insert(Keyboard::new());
         resources.insert(Drag::Empty);
+        resources.insert(Formation::new());
 
         Self {
             resources,
@@ -178,8 +179,6 @@ impl GameWorld {
                         Forces::zero(),
                         Acceleration(Vector3::zero()),
                         formation_unit,
-                        FormationPos::new(Vector2::new(0., i as f32)),
-                        FormationOrder::new(i as u8),
                     )),
                 );
             });

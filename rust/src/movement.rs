@@ -24,11 +24,11 @@ fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3
     (v1, v2, v3)
 }
 
-fn to_2d(v: Vector3) -> Vector2 {
+pub fn to_2d(v: Vector3) -> Vector2 {
     Vector2::new(v.x, v.z)
 }
 
-fn to_3d(v: Vector2) -> Vector3 {
+pub fn to_3d(v: Vector2) -> Vector3 {
     Vector3::new(v.x, 0., v.y)
 }
 

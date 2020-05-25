@@ -1,3 +1,4 @@
+use bitter::Bitter;
 use gdextras::node_ext::NodeExt;
 use gdnative::{Color, Control, TextureRect, Vector2, Vector3};
 use legion::prelude::*;
@@ -9,11 +10,16 @@ const TILE_SIZE: f32 = 16.;
 const FORMATION_WIDTH: usize = 4;
 
 // Formation related functions
-fn index_to_x_y(index: usize) -> (usize, usize) {
+pub fn index_to_x_y(index: usize) -> (usize, usize) {
     let y = index / FORMATION_WIDTH;
     let x = index - y * FORMATION_WIDTH;
 
     (x, y)
+}
+
+fn pos_to_index(pos: Vector2) -> usize {
+    let index = pos.y * FORMATION_WIDTH as f32 + pos.x;
+    index as usize
 }
 
 fn index_to_col(index: usize) -> usize {
@@ -62,23 +68,12 @@ fn snap_to_pos(pos: Vector2) -> Vector2 {
     coords_to_pos(coords)
 }
 
-pub struct Formation {
-    inner: Vec<Vector2>,
-}
+pub struct Formation(pub u16);
 
-pub fn create_formation(dest: Vector3, unit_count: usize) -> Vec<Vector3> {
-    let mut formation_positions = Vec::with_capacity(unit_count);
-
-    let edge_size = (unit_count as f32).sqrt().ceil() as usize;
-
-    for x in 0..edge_size {
-        for z in 0..edge_size {
-            let form_pos = dest + Vector3::new(x as f32, 0., z as f32) * 5.;
-            formation_positions.push(form_pos);
-        }
+impl Formation {
+    pub fn new() -> Self {
+        Self(0)
     }
-
-    formation_positions
 }
 
 // -----------------------------------------------------------------------------
@@ -123,20 +118,12 @@ unsafe impl Sync for FormationUnit {}
 // -----------------------------------------------------------------------------
 //     - Components -
 // -----------------------------------------------------------------------------
+
 #[derive(Debug)]
-pub struct FormationPos(Vector2);
+pub struct FormationPos(pub u16);
 
 impl FormationPos {
-    pub fn new(pos: Vector2) -> Self {
-        Self(pos)
-    }
-}
-
-#[derive(Debug)]
-pub struct FormationOrder(u8);
-
-impl FormationOrder {
-    pub fn new(index: u8) -> Self {
+    pub fn new(index: u16) -> Self {
         Self(index)
     }
 }
@@ -247,17 +234,12 @@ fn drag_formation_unit() -> Box<dyn Runnable> {
         })
 }
 
-// TODO: rewrite this system to be less clunky
-// (review the multiple iterations over the grid)
 fn done_moving() -> Box<dyn Runnable> {
     SystemBuilder::new("done moving")
-        .with_query(<(
-            Write<FormationPos>,
-            Write<FormationOrder>,
-            Read<FormationUnit>,
-        )>::query())
+        .write_resource::<Formation>()
+        .with_query(<Read<FormationUnit>>::query())
         .with_query(<Read<FormationUnit>>::query().filter(tag::<FormationUnitMoved>()))
-        .build_thread_local(|cmd, world, resources, (units, done_moving_unit)| {
+        .build_thread_local(|cmd, world, formation, (units, done_moving_unit)| {
             let entities = done_moving_unit
                 .iter_entities_mut(world)
                 .map(|(ent, _)| ent)
@@ -271,71 +253,12 @@ fn done_moving() -> Box<dyn Runnable> {
                 cmd.remove_tag::<FormationUnitMoved>(*ent);
             }
 
-            let mut grid = Vec::with_capacity(16);
-            let mut x_range = (0..4).collect::<Vec<_>>();
-            x_range.reverse();
-
-            // Create grid (the entire grid, 4x4)
-            for x in x_range {
-                for y in 0..4 {
-                    grid.push((Vector2::new(x as f32, y as f32), false));
-                }
-            }
-
-            for (mut pos, mut order, unit) in units.iter_mut(world) {
-                // Find the unit on the grid.
-                // Remove all empty columns and rows
+            // Set the bits containing units
+            for (ent, unit) in units.iter_entities_mut(world) {
                 let unit_pos = unsafe { unit.0.get_position() } / 16.;
-
-                for (grid_pos, occupied) in &mut grid {
-                    if *grid_pos == unit_pos {
-                        *occupied = true;
-                    }
-                }
-            }
-
-            // Filter out rows / columns that have no unit in them
-
-            let mut keep_rows = Vec::new();
-            let mut keep_cols = Vec::new();
-
-            for (index, (pos, occupied)) in grid.iter().enumerate() {
-                if *occupied {
-                    let row = index_to_row(index);
-                    let col = index_to_col(index);
-
-                    // if !keep_rows.contains(&row) {
-                    //     keep_rows.push(row);
-                    // }
-
-                    if !keep_cols.contains(&col) {
-                        keep_cols.push(col);
-                    }
-                }
-            }
-
-            let mut keep = Vec::new();
-            for row in &keep_rows {
-                let mut indices = row_to_index(*row);
-                keep.append(&mut indices);
-            }
-
-            for col in &keep_cols {
-                let mut indices = col_to_index(*col);
-                keep.append(&mut indices);
-            }
-
-            keep.sort();
-            keep.dedup();
-            keep.reverse();
-
-            eprintln!("{:?}", keep);
-            keep.into_iter().for_each(|index| {
-                grid.remove(index);
-            });
-
-            for (pos, _) in &grid {
-                eprintln!("{}", pos);
+                let index = pos_to_index(unit_pos) as u16;
+                formation.0.set_bit(index, true);
+                cmd.add_component(ent, FormationPos(index));
             }
         })
 }
@@ -352,25 +275,6 @@ pub fn formation_systems(builder: Builder) -> Builder {
 mod test {
     use super::*;
     use gdnative::Vector2;
-
-    // #[test]
-    // fn test_square_formation() {
-    //     let dest = Vector3::new(0., 0., 0.);
-    //     let unit_positions = vec![
-    //         Vector3::new(-10., 0., 10.),
-    //         Vector3::new(10., 0., 10.),
-    //         Vector3::new(-10., 0., -10.),
-    //     ];
-
-    //     let formation = create_formation(dest, FormationShape::Square, unit_positions);
-
-    //     assert!(formation.contains(&dest));
-    //     let formation = formation
-    //         .into_iter()
-    //         .map(|pos| Vector2::new(pos.x, pos.z))
-    //         .collect::<Vec<_>>();
-    //     eprintln!("{:#?}", formation);
-    // }
 
     #[test]
     fn test_col_to_index() {
