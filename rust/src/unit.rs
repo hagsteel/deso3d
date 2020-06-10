@@ -23,8 +23,8 @@ impl Unit {
     pub fn set_color(&mut self, color: Color) {
         unsafe {
             let mut mesh = some_or_bail!(
-                self.inner.get_and_cast::<MeshInstance>("mu/Mu"),
-                "failed to get Mu"
+                self.inner.get_and_cast::<MeshInstance>("Armature/Skeleton/Humanoid"),
+                "failed to get unit mesh"
             );
 
             let mut spatial_mat = SpatialMaterial::new();

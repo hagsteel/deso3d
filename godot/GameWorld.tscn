@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=2]
+[gd_scene load_steps=11 format=2]
 
 [ext_resource path="res://libdeso3d.gdnlib" type="GDNativeLibrary" id=1]
 [ext_resource path="res://fonts/hack.tres" type="DynamicFont" id=2]
@@ -10,12 +10,12 @@ class_name = "GameWorld"
 library = ExtResource( 1 )
 
 [sub_resource type="CubeMesh" id=2]
-size = Vector3( 1, 5, 1 )
+size = Vector3( 1, 2, 1 )
 
 [sub_resource type="SpatialMaterial" id=3]
 flags_transparent = true
 params_specular_mode = 4
-albedo_color = Color( 0, 1, 0.0627451, 0.196078 )
+albedo_color = Color( 0.0509804, 0.894118, 0.882353, 0.282353 )
 roughness = 0.0
 
 [sub_resource type="CubeMesh" id=4]
@@ -27,13 +27,16 @@ albedo_color = Color( 1, 0.368627, 0.368627, 1 )
 [sub_resource type="BoxShape" id=6]
 extents = Vector3( 100, 1, 100 )
 
+[sub_resource type="SphereMesh" id=7]
+
 [node name="GameWorld" type="Spatial"]
 script = SubResource( 1 )
 
 [node name="Camera" type="Camera" parent="."]
-transform = Transform( 1, 0, 0, 0, -2.98023e-07, 1, 0, -1, -2.98023e-07, 40, 50, 17 )
+transform = Transform( 1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 59, 16, 26 )
 current = true
 size = 50.0
+far = 8192.0
 
 [node name="UI" type="CanvasLayer" parent="."]
 
@@ -68,6 +71,7 @@ __meta__ = {
 }
 
 [node name="SelectionBox" type="MeshInstance" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 )
 mesh = SubResource( 2 )
 material/0 = SubResource( 3 )
 
@@ -82,3 +86,16 @@ material/0 = SubResource( 5 )
 
 [node name="CollisionShape" type="CollisionShape" parent="UnitSelectionArea"]
 shape = SubResource( 6 )
+
+[node name="ClickIndicator" type="MeshInstance" parent="."]
+transform = Transform( 0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0 )
+mesh = SubResource( 7 )
+material/0 = SubResource( 3 )
+
+[node name="OmniLight" type="OmniLight" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1, 19.6269, -20.3 )
+light_color = Color( 0.92549, 0.768627, 0.301961, 1 )
+light_energy = 10.0
+shadow_enabled = true
+shadow_bias = 0.2
+omni_range = 100.2

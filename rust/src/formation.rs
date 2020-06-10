@@ -1,13 +1,13 @@
 use bitter::Bitter;
 use gdextras::node_ext::NodeExt;
-use gdnative::{Color, Control, TextureRect, Vector2, Vector3};
+use gdnative::{Color, Control, TextureRect, Vector2};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 
 use crate::input::{MouseButton, LMB};
 
 const TILE_SIZE: f32 = 16.;
-const FORMATION_WIDTH: usize = 4;
+const FORMATION_WIDTH: usize = 4; // WIDTH x WIDTH
 
 // Formation related functions
 pub fn index_to_x_y(index: usize) -> (usize, usize) {
@@ -22,27 +22,27 @@ fn pos_to_index(pos: Vector2) -> usize {
     index as usize
 }
 
-fn index_to_col(index: usize) -> usize {
-    index / FORMATION_WIDTH
-}
+// fn index_to_col(index: usize) -> usize {
+//     index / FORMATION_WIDTH
+// }
 
-fn index_to_row(index: usize) -> usize {
-    let col = index_to_col(index);
-    let row = index - col * FORMATION_WIDTH;
-    row
-}
+// fn index_to_row(index: usize) -> usize {
+//     let col = index_to_col(index);
+//     let row = index - col * FORMATION_WIDTH;
+//     row
+// }
 
-fn row_to_index(row: usize) -> Vec<usize> {
-    let start = row * FORMATION_WIDTH;
-    let end = row * FORMATION_WIDTH + FORMATION_WIDTH;
-    (start..end).collect()
-}
+// fn row_to_index(row: usize) -> Vec<usize> {
+//     let start = row * FORMATION_WIDTH;
+//     let end = row * FORMATION_WIDTH + FORMATION_WIDTH;
+//     (start..end).collect()
+// }
 
-fn col_to_index(col: usize) -> Vec<usize> {
-    (col..FORMATION_WIDTH * FORMATION_WIDTH)
-        .step_by(FORMATION_WIDTH)
-        .collect()
-}
+// fn col_to_index(col: usize) -> Vec<usize> {
+//     (col..FORMATION_WIDTH * FORMATION_WIDTH)
+//         .step_by(FORMATION_WIDTH)
+//         .collect()
+// }
 
 // *  Needs to work regardless of number of units
 //

@@ -3,17 +3,18 @@ use gdextras::node_ext::NodeExt;
 use gdextras::some_or_bail;
 use gdnative::{
     godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
-    methods, Area, Camera as GodotCamera, CanvasLayer, Color, GridMap, InputEvent, InputEventKey,
-    InputEventMouse, InputEventMouseButton, Label, MeshInstance, NativeClass, Performance, Spatial,
-    Vector3, Vector2, Control
+    methods, AnimationTree as GDAnimationTree, Area, Camera as GodotCamera, CanvasLayer, Color,
+    Control, GridMap, InputEvent, InputEventKey, InputEventMouse, InputEventMouseButton, Label,
+    MeshInstance, NativeClass, Performance, Spatial, Vector2, Vector3
 };
 use lazy_static::lazy_static;
 use legion::prelude::*;
 use std::sync::Mutex;
 
+use crate::animation::{animation_systems, Animation, AnimationTree};
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
 use crate::enemy::{enemy_systems, DetectionRange, Enemy};
-use crate::formation::{FormationUI, FormationUnit, formation_systems, Formation};
+use crate::formation::{formation_systems, Formation, FormationUI, FormationUnit, FormationPos};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
 use crate::movement::{movement_systems, Acceleration, Forces, MaxSpeed, Pos, Velocity};
 use crate::player::{player_systems, PlayerId};
@@ -25,14 +26,15 @@ use crate::unit::Unit;
 fn setup_physics_schedule() -> Schedule {
     let builder = Schedule::builder();
     let builder = movement_systems(builder);
+    let builder = animation_systems(builder);
     builder.build()
 }
 
 fn setup_schedule() -> Schedule {
     let builder = Schedule::builder().add_thread_local(draw_tilemap());
     let builder = enemy_systems(builder);
-    let builder = player_systems(builder);
     let builder = camera_systems(builder);
+    let builder = player_systems(builder);
     let builder = formation_systems(builder);
     builder.build()
 }
@@ -56,6 +58,19 @@ where
 //     - Resources -
 // -----------------------------------------------------------------------------
 pub struct Delta(pub f32);
+pub struct ClickIndicator(pub MeshInstance);
+
+unsafe impl Send for ClickIndicator {}
+unsafe impl Sync for ClickIndicator {}
+
+impl ClickIndicator {
+    pub fn set_position(&mut self, pos: Vector3) {
+        unsafe { 
+            self.0.set_translation(pos);
+        }
+    }
+}
+
 
 // -----------------------------------------------------------------------------
 //     - Godot node -
@@ -92,6 +107,12 @@ impl GameWorld {
 
     #[export]
     pub fn _ready(&mut self, mut owner: Spatial) {
+        let click_indicator = some_or_bail!(
+            owner.get_and_cast::<MeshInstance>("ClickIndicator"),
+            "failed to get click indicator"
+        );
+        self.resources.insert(ClickIndicator(click_indicator));
+
         // Tilemap
         let gridmap = owner
             .get_and_cast::<GridMap>("GridMap")
@@ -140,14 +161,16 @@ impl GameWorld {
             let formation_y = (i as f32) * 16.;
 
             let x = (i as f32 + 15.) * 4.;
-            let y = 2.;
+            let y = 0.4;
             let z = 10.;
 
             let mut formation_unit = spawner::spawn_formation_unit();
             unsafe {
-                formation_ui.get_and_cast::<Control>("Pending").map(|mut p| {
-                    p.add_child(Some(formation_unit.to_node()), false);
-                });
+                formation_ui
+                    .get_and_cast::<Control>("Pending")
+                    .map(|mut p| {
+                        p.add_child(Some(formation_unit.to_node()), false);
+                    });
                 formation_unit.set_position(Vector2::new(formation_x, formation_y), false);
             }
 
@@ -160,13 +183,20 @@ impl GameWorld {
 
             let pos = unsafe { unit.get_translation() };
 
+            let anim_tree = some_or_bail!(
+                unit.get_and_cast::<GDAnimationTree>("AnimationTree"),
+                "failed to get animation tree"
+            );
+
             let mut unit = Unit::new(unit);
             unit.set_color(color);
 
             let mut formation_unit = FormationUnit::new(formation_unit);
             formation_unit.set_color(color);
 
-            let speed = MaxSpeed(20f32);
+            let formation_pos = FormationPos(i as u16);
+
+            let speed = MaxSpeed(7.5f32);
 
             with_world(|world| {
                 world.insert(
@@ -179,6 +209,9 @@ impl GameWorld {
                         Forces::zero(),
                         Acceleration(Vector3::zero()),
                         formation_unit,
+                        formation_pos,
+                        AnimationTree::new(anim_tree),
+                        Animation::Idle,
                     )),
                 );
             });
@@ -210,6 +243,7 @@ impl GameWorld {
                         DetectionRange(10.),
                         Forces::zero(),
                         Acceleration(Vector3::zero()),
+                        Animation::Idle,
                     )),
                 );
             });

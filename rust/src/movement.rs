@@ -6,6 +6,7 @@ use legion::prelude::*;
 use legion::systems::schedule::Builder;
 use serde::{Deserialize, Serialize};
 
+use crate::animation::Animation;
 use crate::gameworld::Delta;
 use crate::unit::Unit;
 
@@ -13,7 +14,7 @@ type Transform3 = Transform3D<f32, UnknownUnit, UnknownUnit>;
 pub type Rotation3 = Rot3D<f32, UnknownUnit, UnknownUnit>;
 
 const GRAVITY: Vector3 = Vector3::new(0., -10., 0.);
-const EPSILON: f32 = 1e-6;
+const EPSILON: f32 = 1e-4;
 
 fn transform_to_x_y_z_direction(trans: Transform3) -> (Vector3, Vector3, Vector3) {
     let cols = trans.to_column_arrays();
@@ -48,15 +49,13 @@ pub struct Destination(pub Vector3);
 pub struct Acceleration(pub Vector3);
 
 pub struct Forces {
-    separation: Vector3,
-    seek: Vector3,
+    seek: Vector2,
 }
 
 impl Forces {
     pub fn zero() -> Self {
         Self {
-            separation: Vector3::zero(),
-            seek: Vector3::zero(),
+            seek: Vector2::zero(),
         }
     }
 }
@@ -87,21 +86,12 @@ fn reset_forces() -> Box<dyn Runnable> {
 
 fn apply_forces() -> Box<dyn Runnable> {
     SystemBuilder::new("apply_forces")
-        .read_resource::<Delta>()
         .with_query(<(Read<Unit>, Read<Forces>, Write<Acceleration>)>::query())
-        .build_thread_local(|_, world, delta, query| {
+        .build_thread_local(|_, world, _, query| {
             for (unit, forces, mut acc) in query.iter_mut(world) {
-                // Add gravity
-                unsafe {
-                    if unit.inner.is_on_floor() {
-                        acc.0.y = GRAVITY.y;
-                    } else {
-                        acc.0.y += GRAVITY.y;
-                    }
-                }
-
                 // acc.0 += forces.separation;
-                acc.0 += forces.seek;
+
+                acc.0 += to_3d(forces.seek);
             }
         })
 }
@@ -117,18 +107,17 @@ fn seek() -> Box<dyn Runnable> {
             Read<Velocity>,
         )>::query())
         .build_thread_local(|_, world, delta, query| {
-            for (max_speed, pos, dest, mut forces, velocity) in query.iter_mut(world)
-            {
+            for (max_speed, pos, dest, mut forces, velocity) in query.iter_mut(world) {
                 let mut diff = to_2d(dest.0 - pos.0);
                 let dist = diff.length();
-                let future_dist = (pos.0 + velocity.0 * delta.0 - dest.0).length();
+                let future_dist = to_2d(pos.0 + velocity.0 * delta.0 - dest.0).length();
 
                 if future_dist >= dist {
                     let force = to_2d(-velocity.0) + diff / delta.0;
-                    forces.seek = to_3d(force);
+                    forces.seek = force;
                 } else {
                     diff += diff.normalize() * max_speed.0;
-                    forces.seek = to_3d(diff);
+                    forces.seek = diff;
                 }
             }
         })
@@ -136,6 +125,7 @@ fn seek() -> Box<dyn Runnable> {
 
 fn move_units() -> Box<dyn Runnable> {
     SystemBuilder::new("move units")
+        .read_resource::<Delta>()
         .with_query(
             <(
                 Write<Pos>,
@@ -146,10 +136,11 @@ fn move_units() -> Box<dyn Runnable> {
             )>::query()
             .filter(component::<Destination>()),
         )
-        .build_thread_local(|_, world, _, units| {
+        .build_thread_local(|_, world, delta, units| {
             for (mut pos, mut unit, mut velocity, acc, max_speed) in units.iter_mut(world) {
                 velocity.0 += acc.0;
                 velocity.0 = velocity.0.with_max_length(max_speed.0);
+                velocity.0.y = 0.;
                 velocity.0 = unit
                     .inner
                     .move_and_slide_default(velocity.0, Vector3::new(0., 1., 0.));
@@ -163,7 +154,14 @@ fn rotate_unit() -> Box<dyn Runnable> {
         .with_query(<(Write<Unit>, Read<Pos>, Read<Destination>)>::query())
         .build_thread_local(|_, world, _, velocities| {
             for (mut unit, pos, dest) in velocities.iter_mut(world) {
-                let direction = (dest.0 - pos.0).normalize();
+                let diff = dest.0 - pos.0;
+
+                // To stop it flapping we can assume it's done if it's really close
+                if diff.length() < 1. {
+                    return;
+                }
+
+                let direction = diff.normalize();
 
                 unsafe {
                     let current_rot = unit.inner.get_rotation();
@@ -188,25 +186,42 @@ fn rotate_unit() -> Box<dyn Runnable> {
 
 fn done_moving() -> Box<dyn Runnable> {
     SystemBuilder::new("done_moving")
-        .with_query(<(Read<Pos>, Read<Destination>, Read<Velocity>)>::query())
-        .build_thread_local(|cmd, world, resources, query| {
-            for (ent, (pos, dest, vel)) in query.iter_entities(world) {
-                let dist = to_2d(pos.0 - dest.0).length();
+        .with_query(<(Read<Pos>, Read<Destination>, Write<Animation>)>::query())
+        .build_thread_local(|cmd, world, _, query| {
+            for (ent, (pos, dest, mut animation)) in query.iter_entities_mut(world) {
+                let dist = (to_2d(pos.0) - to_2d(dest.0)).length();
                 if dist < EPSILON && dist > -EPSILON {
                     cmd.remove_component::<Destination>(ent);
+                    *animation = Animation::Idle;
+                } else {
+                    *animation = Animation::Run;
                 }
             }
         })
 }
 
+fn apply_gravity() -> Box<dyn Runnable> {
+    SystemBuilder::new("apply gravity")
+        .with_query(<Write<Unit>>::query())
+        .build_thread_local(|cmd, world, resources, units| unsafe {
+            for mut unit in units.iter_mut(world) {
+                if unit.inner.is_on_floor() {
+                    continue;
+                }
+                unit
+                    .inner
+                    .move_and_slide_default(GRAVITY, Vector3::new(0., 1., 0.));
+            }
+    })
+}
+
 pub fn movement_systems(builder: Builder) -> Builder {
     builder
+        // .add_thread_local(apply_gravity())
         .add_thread_local(reset_acceleration())
         .add_thread_local(reset_forces())
         .add_thread_local(seek())
         .add_thread_local(apply_forces())
-        // .add_thread_local(apply_directional_velocity())
-        // .add_thread_local(apply_separation())
         .add_thread_local(rotate_unit())
         .add_thread_local(move_units())
         .add_thread_local(done_moving())

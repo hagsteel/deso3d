@@ -11,7 +11,7 @@ use crate::formation::{FormationPos, index_to_x_y};
 
 type Rotation2 = Rotation2D<f32, UnknownUnit, UnknownUnit>;
 
-const OFFSET_MUL: f32 = 4.0;
+const OFFSET_MUL: f32 = 2.0;
 
 // -----------------------------------------------------------------------------
 //     - Tags -
@@ -118,9 +118,13 @@ fn player_find_destinations() -> Box<dyn Runnable> {
                 .map(|(ent, (pos, formation_pos))| (ent, pos.0, formation_pos.0))
                 .collect::<Vec<_>>();
 
+            if positions.len() == 0 {
+                return
+            }
+
             let (offset, rotation) = {
                 let mut offset_x = 0;
-                let mut offset_y = 0;
+                let mut offset_y = usize::MAX;
                 let mut dir = Vector2::zero();
 
                 // Find the max x and the correct y
@@ -132,7 +136,7 @@ fn player_find_destinations() -> Box<dyn Runnable> {
                         offset_y = y;
                         dir = to_2d(dest_pos - *pos);
                     }
-                    if y > offset_y {
+                    if y < offset_y {
                         offset_y = y;
                         dir = to_2d(dest_pos - *pos);
                     }

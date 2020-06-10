@@ -1,0 +1,19 @@
+[remap]
+
+importer="wavefront_obj"
+type="Mesh"
+path="res://.import/footile.obj-b15ded560081351f05809178d59be27f.mesh"
+
+[deps]
+
+files=[ "res://.import/footile.obj-b15ded560081351f05809178d59be27f.mesh" ]
+
+source_file="res://assets/footile.obj"
+dest_files=[ "res://.import/footile.obj-b15ded560081351f05809178d59be27f.mesh", "res://.import/footile.obj-b15ded560081351f05809178d59be27f.mesh" ]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3( 1, 1, 1 )
+offset_mesh=Vector3( 0, 0, 0 )
+optimize_mesh=true

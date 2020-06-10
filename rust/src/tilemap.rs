@@ -8,7 +8,7 @@ pub struct TileMap(pub GridMap);
 unsafe impl Send for TileMap {}
 unsafe impl Sync for TileMap {}
 
-// TODO: delete this
+// TODO: delete this (why?)
 pub struct Coords {
     cells: Vec<Vector2>,
 }
@@ -41,17 +41,15 @@ pub fn draw_tilemap() -> Box<dyn Runnable> {
             }
 
             for cell in coords.cells.drain(..) {
+                eprintln!("cell: {}", cell);
                 let x = cell.x as i64;
                 let y = 0;
                 let z = cell.y as i64;
 
                 let seed = pack_vec2(cell);
-                let cell_type = if random_bool(seed, 100) {
-                    2
-                } else {
-                    1
-                };
-                    // random_choice(&[2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], seed);
+                let cell_type = if random_bool(seed, 100) { 1 } else { 0 };
+
+                // random_choice(&[2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], seed);
                 unsafe {
                     tilemap.0.set_cell_item(x, y, z, cell_type, 0);
                 }

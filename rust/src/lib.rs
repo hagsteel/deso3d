@@ -13,6 +13,7 @@ mod saveload;
 mod enemy;
 mod main_menu;
 mod formation;
+mod animation;
 // mod dragndrop;
 
 fn init(handle: init::InitHandle) {

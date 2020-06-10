@@ -1,7 +1,7 @@
 use gdnative::{GodotObject, KinematicBody, PackedScene, ResourceLoader, TextureRect};
 
 pub fn spawn_unit() -> KinematicBody {
-    load_resource("res://Unit.tscn")
+    load_resource("res://characters/humanoid_a.tscn")
 }
 
 pub fn spawn_enemy() -> KinematicBody {

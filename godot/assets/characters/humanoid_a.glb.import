@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/mu.glb-083f440a128d33553b753542a106d596.scn"
+path="res://.import/humanoid_a.glb-7fdec623b5a754c3146c0e27dcbcf9bb.scn"
 
 [deps]
 
-source_file="res://assets/mu.glb"
-dest_files=[ "res://.import/mu.glb-083f440a128d33553b753542a106d596.scn" ]
+source_file="res://assets/characters/humanoid_a.glb"
+dest_files=[ "res://.import/humanoid_a.glb-7fdec623b5a754c3146c0e27dcbcf9bb.scn" ]
 
 [params]
 
@@ -27,7 +27,7 @@ meshes/lightmap_texel_size=0.1
 skins/use_named_skins=true
 external_files/store_in_subdir=false
 animation/import=true
-animation/fps=15
+animation/fps=24.0
 animation/filter_script=""
 animation/storage=false
 animation/keep_custom_tracks=false

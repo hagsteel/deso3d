@@ -1,12 +1,12 @@
 use gdnative::{
-    Camera as GodotCamera, MeshInstance, PhysicsServer, Variant, VariantArray, Vector2, Vector3,
-    Area
+    Area, Camera as GodotCamera, MeshInstance, PhysicsServer, Variant, VariantArray, Vector2,
+    Vector3,
 };
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 
-use crate::gameworld::Delta;
-use crate::input::{Keyboard, Keys};
+use crate::gameworld::{ClickIndicator, Delta};
+use crate::input::{Keyboard, Keys, MousePos, MouseButton, RMB};
 
 pub const RAY_LENGTH: f32 = 1000.;
 const CAMERA_SPEED: f32 = 80.;
@@ -46,7 +46,12 @@ unsafe impl Send for Camera {}
 unsafe impl Sync for Camera {}
 
 impl Camera {
-    pub fn pos_from_camera(&self, mouse_pos: Vector2, ray_length: f32, col_mask: i64) -> Option<Vector3> {
+    pub fn pos_from_camera(
+        &self,
+        mouse_pos: Vector2,
+        ray_length: f32,
+        col_mask: i64,
+    ) -> Option<Vector3> {
         let from = unsafe { self.0.project_ray_origin(mouse_pos) };
         let to = from + unsafe { self.0.project_ray_normal(mouse_pos) } * ray_length;
 
@@ -125,6 +130,29 @@ fn move_camera() -> Box<dyn Runnable> {
         })
 }
 
+fn set_click_indicator() -> Box<dyn Runnable> {
+    SystemBuilder::new("set click indicator")
+        .read_resource::<Camera>()
+        .write_resource::<ClickIndicator>()
+        .read_resource::<MouseButton>()
+        .read_resource::<MousePos>()
+        .build_thread_local(|_cmd, _world, resources, _query| {
+            let (camera, click_indicator, mouse_btn, mouse_pos) = resources;
+            if !mouse_btn.button_pressed(RMB) {
+                return;
+            }
+
+            let dest_pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH, 1) {
+                Some(p) => p,
+                None => return,
+            };
+
+            click_indicator.set_position(dest_pos);
+        })
+}
+
 pub fn camera_systems(builder: Builder) -> Builder {
-    builder.add_thread_local(move_camera())
+    builder
+        .add_thread_local(move_camera())
+        .add_thread_local(set_click_indicator())
 }
