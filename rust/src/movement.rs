@@ -1,7 +1,7 @@
 use euclid::Rotation3D as Rot3D;
-use euclid::{Angle, Transform3D, UnknownUnit};
+use euclid::{Transform3D, UnknownUnit};
 use gdextras::movement::Move3D;
-use gdnative::{VariantArray, Vector2, Vector3, Color};
+use gdnative::{VariantArray, Vector2, Vector3, Color, Rotation3D, Angle};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 use serde::{Deserialize, Serialize};
@@ -126,7 +126,6 @@ fn seek() -> Box<dyn Runnable> {
 
 fn avoid() -> Box<dyn Runnable> {
     SystemBuilder::new("avoid")
-        // .write_resource::<RayIndicator>()
         .write_resource::<DebugLines>()
         .with_query(<(Read<Unit>, Read<Destination>, Write<Forces>)>::query())
         .build_thread_local(|cmd, world, debug_lines, query| {
@@ -148,7 +147,7 @@ fn avoid() -> Box<dyn Runnable> {
                     to.y = from.y;
                     let col_mask = 1;
 
-                    debug_lines.add(from, to, Color::rgb(1.0, 0., 0.));
+                    debug_lines.add(from, to, Color::rgb(1.0, 0., 0.), 2.);
 
                     let res = space_state.intersect_ray(
                         from,
@@ -172,10 +171,31 @@ fn avoid() -> Box<dyn Runnable> {
                         None => continue,
                     };
 
-                    eprintln!("{} | {} | {}", dist, pos, to.y);
+                    // let mut colliding = true;
 
-                    debug_lines.add(pos, pos + normal * 5., Color::rgb(0., 0., 1.));
-                    force.separation += to_2d(normal * 5.);
+                    // while colliding {
+
+                        // let res = space_state.intersect_ray(
+                        //     from,
+                        //     from + new_dir * 5.,
+                        //     VariantArray::new(),
+                        //     col_mask,
+                        //     true,  // bodies
+                        //     false, // areas
+                        // );
+
+                    let dir = (pos - from).normalize();
+                    let angle = Angle::degrees(15.);
+                    let rotation = Rotation3D::around_y(angle);
+                    let new_dir = rotation.transform_vector3d(dir);
+
+                    // let sep_force = from / 2. + new_dir * 15.;
+                    let sep_force = new_dir * 1500.;
+                    debug_lines.add(from, from + new_dir * 15., Color::rgb(0., 1., 1.), 7.);
+                    debug_lines.add(pos, pos + normal * 5., Color::rgb(0., 0., 1.), 5.);
+                    force.separation += to_2d(sep_force);
+
+                    // }
                 }
             }
         })

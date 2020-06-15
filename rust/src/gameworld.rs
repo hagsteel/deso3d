@@ -73,7 +73,7 @@ impl ClickIndicator {
 }
 
 #[derive(Debug)]
-pub struct Line(pub Vector3, pub Vector3, pub Color);
+pub struct Line(pub Vector3, pub Vector3, pub Color, pub f64);
 
 pub struct DebugLines {
     inner: Vec<Line>,
@@ -84,8 +84,8 @@ impl DebugLines {
         Self { inner: Vec::new() }
     }
 
-    pub fn add(&mut self, start: Vector3, end: Vector3, col: Color) {
-        self.inner.push(Line(start, end, col));
+    pub fn add(&mut self, start: Vector3, end: Vector3, col: Color, width: f64) {
+        self.inner.push(Line(start, end, col, width));
     }
 }
 
