@@ -1,6 +1,6 @@
 [gd_scene load_steps=15 format=2]
 
-[sub_resource type="ArrayMesh" id=13]
+[sub_resource type="ArrayMesh" id=1]
 resource_name = "Humanoid"
 surfaces/0 = {
 "aabb": AABB( -0.931684, 0.00396943, -0.178633, 1.86337, 1.90479, 0.32616 ),
@@ -14,7 +14,7 @@ surfaces/0 = {
 "vertex_count": 3261
 }
 
-[sub_resource type="Skin" id=14]
+[sub_resource type="Skin" id=2]
 resource_name = "Skin"
 bind_count = 35
 bind/0/name = "spine_1"
@@ -123,7 +123,7 @@ bind/34/name = "foot_ik_r"
 bind/34/bone = -1
 bind/34/pose = Transform( -1, -2.76566e-05, 0, 0, 0, 1, -2.76566e-05, 1, 0, -0.0958398, -0.409068, -0.0493899 )
 
-[sub_resource type="Animation" id=15]
+[sub_resource type="Animation" id=3]
 resource_name = "ArmatureAction"
 length = 0.0333333
 tracks/0/type = "transform"
@@ -372,7 +372,7 @@ tracks/34/imported = false
 tracks/34/enabled = true
 tracks/34/keys = PoolRealArray( 0, 1, -0.0710184, -0.052206, 0.00716496, 0.0235437, 0.154155, 0.132245, 0.978873, 1, 1, 1, 0.0333333, 1, -0.0710184, -0.052206, 0.00716496, 0.0235437, 0.154155, 0.132245, 0.978873, 1, 1, 1 )
 
-[sub_resource type="Animation" id=16]
+[sub_resource type="Animation" id=4]
 resource_name = "Idle-loop"
 length = 0.833333
 loop = true
@@ -622,7 +622,7 @@ tracks/34/imported = false
 tracks/34/enabled = true
 tracks/34/keys = PoolRealArray( 0, 1, 0, 0, 0, 7.45058e-08, 4.80795e-08, -6.33882e-08, 1, 1, 1, 1, 0.833333, 1, 0, 0, 0, 7.45058e-08, 4.80795e-08, -6.33882e-08, 1, 1, 1, 1 )
 
-[sub_resource type="Animation" id=17]
+[sub_resource type="Animation" id=5]
 resource_name = "Run-loop"
 length = 1.03333
 loop = true
@@ -872,7 +872,7 @@ tracks/34/imported = false
 tracks/34/enabled = true
 tracks/34/keys = PoolRealArray( 0, 1, 0.143613, -1.09971, -0.269878, -0.588293, -0.0674444, 0.202731, 0.779912, 1, 1, 1, 0.0666667, 1, 0.140569, -1.02934, -0.215956, -0.623209, -0.0766448, 0.208948, 0.749718, 1, 1, 1, 0.133333, 1, 0.120604, -0.681039, 0.0357376, -0.715204, -0.101976, 0.224106, 0.65411, 1, 1, 1, 0.2, 1, 0.0935648, -0.423804, 0.183455, -0.667702, -0.0890263, 0.215802, 0.706879, 1, 1, 1, 0.266667, 1, 0.07948, -0.283975, 0.265657, -0.56235, -0.0607308, 0.197974, 0.80055, 1, 1, 1, 0.333333, 1, 0.100396, -0.195917, 0.409893, -0.454014, -0.0319748, 0.18051, 0.871932, 1, 1, 1, 0.4, 1, 0.121192, -0.0732596, 0.584918, -0.255716, 0.0126927, 0.135123, 0.957178, 1, 1, 1, 0.466667, 1, 0.120399, 0.106978, 0.744774, 0.155451, 0.089379, 0.018422, 0.983619, 1, 1, 1, 0.533333, 1, 0.118899, 0.199794, 0.823704, 0.385795, 0.124385, -0.0547069, 0.912523, 1, 1, 1, 0.6, 1, 0.00901897, 0.183267, 0.467701, 0.303193, 0.106254, -0.0304879, 0.946496, 1, 1, 1, 0.666667, 1, -0.0326585, -0.013727, 0.160906, 0.162273, 0.0769323, 0.0107288, 0.983684, 1, 1, 1, 0.733333, 1, -0.032782, -0.14815, 0.0394636, 0.0505182, 0.0518509, 0.0417535, 0.996502, 1, 1, 1, 0.8, 1, -0.0399567, -0.188919, -0.0195255, -0.022622, 0.0348492, 0.062716, 0.997166, 1, 1, 1, 0.866667, 1, -0.0528129, -0.239568, -0.105051, -0.10636, 0.0155948, 0.0859823, 0.99048, 1, 1, 1, 0.933333, 1, -0.0238396, -0.511173, -0.259706, -0.311646, -0.0273956, 0.136411, 0.939957, 1, 1, 1, 1, 1, 0.112637, -1.00042, -0.276625, -0.549036, -0.0624695, 0.193588, 0.810667, 1, 1, 1, 1.03333, 1, 0.143613, -1.09971, -0.269878, -0.588293, -0.0674444, 0.202731, 0.779912, 1, 1, 1 )
 
-[sub_resource type="Animation" id=18]
+[sub_resource type="Animation" id=6]
 resource_name = "TorsoFire-loop"
 length = 0.2
 loop = true
@@ -1122,7 +1122,7 @@ tracks/34/imported = false
 tracks/34/enabled = true
 tracks/34/keys = PoolRealArray( 0, 1, 0.143613, -1.09971, -0.269878, -0.588293, -0.0674444, 0.202731, 0.779912, 1, 1, 1, 0.0666667, 1, 0.140569, -1.02934, -0.215956, -0.623209, -0.0766448, 0.208948, 0.749718, 1, 1, 1, 0.133333, 1, 0.120604, -0.681039, 0.0357376, -0.715204, -0.101976, 0.224106, 0.65411, 1, 1, 1, 0.2, 1, 0.0935648, -0.423804, 0.183455, -0.667702, -0.0890264, 0.215802, 0.706879, 1, 1, 1 )
 
-[sub_resource type="Animation" id=19]
+[sub_resource type="Animation" id=7]
 resource_name = "TorsoRun-loop"
 length = 1.03333
 loop = true
@@ -1391,12 +1391,13 @@ states/Run-loop/node = SubResource( 9 )
 states/Run-loop/position = Vector2( 524.5, 49 )
 transitions = [ "Idle-loop", "Run-loop", SubResource( 10 ), "Run-loop", "Idle-loop", SubResource( 11 ) ]
 
-[sub_resource type="AnimationNodeStateMachinePlayback" id=20]
+[sub_resource type="AnimationNodeStateMachinePlayback" id=13]
 
-[sub_resource type="CapsuleShape" id=21]
+[sub_resource type="CapsuleShape" id=14]
 radius = 0.5
 
 [node name="humanoid_a" type="KinematicBody"]
+collision_layer = 4
 collision_mask = 0
 
 [node name="Armature" type="Spatial" parent="."]
@@ -1580,23 +1581,23 @@ bones/34/enabled = true
 bones/34/bound_children = [  ]
 
 [node name="Humanoid" type="MeshInstance" parent="Armature/Skeleton"]
-mesh = SubResource( 13 )
-skin = SubResource( 14 )
+mesh = SubResource( 1 )
+skin = SubResource( 2 )
 material/0 = null
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-anims/ArmatureAction = SubResource( 15 )
-anims/Idle-loop = SubResource( 16 )
-anims/Run-loop = SubResource( 17 )
-anims/TorsoFire-loop = SubResource( 18 )
-anims/TorsoRun-loop = SubResource( 19 )
+anims/ArmatureAction = SubResource( 3 )
+anims/Idle-loop = SubResource( 4 )
+anims/Run-loop = SubResource( 5 )
+anims/TorsoFire-loop = SubResource( 6 )
+anims/TorsoRun-loop = SubResource( 7 )
 
 [node name="AnimationTree" type="AnimationTree" parent="."]
 tree_root = SubResource( 12 )
 anim_player = NodePath("../AnimationPlayer")
 active = true
-parameters/playback = SubResource( 20 )
+parameters/playback = SubResource( 13 )
 
 [node name="CollisionShape" type="CollisionShape" parent="."]
 transform = Transform( 1, 0, 0, 0, -1.62921e-07, -1, 0, 1, -1.62921e-07, 0, 1, 0 )
-shape = SubResource( 21 )
+shape = SubResource( 14 )
