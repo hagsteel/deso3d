@@ -142,7 +142,7 @@ fn set_click_indicator() -> Box<dyn Runnable> {
                 return;
             }
 
-            let dest_pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH, 1) {
+            let dest_pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH, 2) {
                 Some(p) => p,
                 None => return,
             };

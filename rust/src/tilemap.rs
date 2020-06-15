@@ -41,7 +41,6 @@ pub fn draw_tilemap() -> Box<dyn Runnable> {
             }
 
             for cell in coords.cells.drain(..) {
-                eprintln!("cell: {}", cell);
                 let x = cell.x as i64;
                 let y = 0;
                 let z = cell.y as i64;

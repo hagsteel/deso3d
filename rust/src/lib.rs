@@ -1,5 +1,6 @@
 use gdnative::*;
 
+mod game;
 mod gameworld;
 mod input;
 mod movement;
@@ -15,10 +16,12 @@ mod main_menu;
 mod formation;
 mod animation;
 // mod dragndrop;
+mod debug;
 
 fn init(handle: init::InitHandle) {
     handle.add_class::<gameworld::GameWorld>();
     handle.add_class::<main_menu::MainMenu>();
+    handle.add_class::<debug::DebugDraw>();
 }
 
 godot_gdnative_init!();

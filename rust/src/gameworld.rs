@@ -5,7 +5,7 @@ use gdnative::{
     godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
     methods, AnimationTree as GDAnimationTree, Area, Camera as GodotCamera, CanvasLayer, Color,
     Control, GridMap, InputEvent, InputEventKey, InputEventMouse, InputEventMouseButton, Label,
-    MeshInstance, NativeClass, Performance, Spatial, Vector2, Vector3
+    MeshInstance, NativeClass, Node2D, Performance, Spatial, Vector2, Vector3,
 };
 use lazy_static::lazy_static;
 use legion::prelude::*;
@@ -14,7 +14,7 @@ use std::sync::Mutex;
 use crate::animation::{animation_systems, Animation, AnimationTree};
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
 use crate::enemy::{enemy_systems, DetectionRange, Enemy};
-use crate::formation::{formation_systems, Formation, FormationUI, FormationUnit, FormationPos};
+use crate::formation::{formation_systems, Formation, FormationPos, FormationUI, FormationUnit};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
 use crate::movement::{movement_systems, Acceleration, Forces, MaxSpeed, Pos, Velocity};
 use crate::player::{player_systems, PlayerId};
@@ -22,6 +22,7 @@ use crate::saveload;
 use crate::spawner;
 use crate::tilemap::{draw_tilemap, Coords, TileMap};
 use crate::unit::Unit;
+use crate::debug::DebugDraw;
 
 fn setup_physics_schedule() -> Schedule {
     let builder = Schedule::builder();
@@ -65,12 +66,28 @@ unsafe impl Sync for ClickIndicator {}
 
 impl ClickIndicator {
     pub fn set_position(&mut self, pos: Vector3) {
-        unsafe { 
+        unsafe {
             self.0.set_translation(pos);
         }
     }
 }
 
+#[derive(Debug)]
+pub struct Line(pub Vector3, pub Vector3, pub Color);
+
+pub struct DebugLines {
+    inner: Vec<Line>,
+}
+
+impl DebugLines {
+    pub fn new() -> Self {
+        Self { inner: Vec::new() }
+    }
+
+    pub fn add(&mut self, start: Vector3, end: Vector3, col: Color) {
+        self.inner.push(Line(start, end, col));
+    }
+}
 
 // -----------------------------------------------------------------------------
 //     - Godot node -
@@ -97,6 +114,7 @@ impl GameWorld {
         resources.insert(Keyboard::new());
         resources.insert(Drag::Empty);
         resources.insert(Formation::new());
+        resources.insert(DebugLines::new());
 
         Self {
             resources,
@@ -317,6 +335,15 @@ impl GameWorld {
         let perf = Performance::godot_singleton();
         let fps = format!("fps: {}", perf.get_monitor(Performance::TIME_FPS));
         unsafe { label.set_text(fps.into()) };
+
+        self.resources.get_mut::<DebugLines>().map(|mut lines| {
+            owner.get_and_cast::<Node2D>("DebugDraw").map(|mut dd| {
+                dd.with_script(|debug_draw: &mut DebugDraw, _| unsafe {
+                    debug_draw.set_lines(lines.inner.drain(..).collect());
+                    dd.update();
+                });
+            });
+        });
     }
 
     #[export]

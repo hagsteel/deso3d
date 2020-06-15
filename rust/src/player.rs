@@ -108,7 +108,7 @@ fn player_find_destinations() -> Box<dyn Runnable> {
 
             mouse_btn.consume();
 
-            let dest_pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH, 1) {
+            let dest_pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH, 2) {
                 Some(p) => p,
                 None => return,
             };

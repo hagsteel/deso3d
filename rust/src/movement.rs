@@ -1,13 +1,13 @@
 use euclid::Rotation3D as Rot3D;
 use euclid::{Angle, Transform3D, UnknownUnit};
 use gdextras::movement::Move3D;
-use gdnative::{Vector2, Vector3};
+use gdnative::{VariantArray, Vector2, Vector3, Color};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 use serde::{Deserialize, Serialize};
 
 use crate::animation::Animation;
-use crate::gameworld::Delta;
+use crate::gameworld::{Delta, DebugLines};
 use crate::unit::Unit;
 
 type Transform3 = Transform3D<f32, UnknownUnit, UnknownUnit>;
@@ -50,12 +50,14 @@ pub struct Acceleration(pub Vector3);
 
 pub struct Forces {
     seek: Vector2,
+    separation: Vector2,
 }
 
 impl Forces {
     pub fn zero() -> Self {
         Self {
             seek: Vector2::zero(),
+            separation: Vector2::zero(),
         }
     }
 }
@@ -89,8 +91,7 @@ fn apply_forces() -> Box<dyn Runnable> {
         .with_query(<(Read<Unit>, Read<Forces>, Write<Acceleration>)>::query())
         .build_thread_local(|_, world, _, query| {
             for (unit, forces, mut acc) in query.iter_mut(world) {
-                // acc.0 += forces.separation;
-
+                acc.0 += to_3d(forces.separation);
                 acc.0 += to_3d(forces.seek);
             }
         })
@@ -118,6 +119,63 @@ fn seek() -> Box<dyn Runnable> {
                 } else {
                     diff += diff.normalize() * max_speed.0;
                     forces.seek = diff;
+                }
+            }
+        })
+}
+
+fn avoid() -> Box<dyn Runnable> {
+    SystemBuilder::new("avoid")
+        // .write_resource::<RayIndicator>()
+        .write_resource::<DebugLines>()
+        .with_query(<(Read<Unit>, Read<Destination>, Write<Forces>)>::query())
+        .build_thread_local(|cmd, world, debug_lines, query| {
+            for (unit, dest, mut force) in query.iter_mut(world) {
+                unsafe {
+                    let mut space_state = unit
+                        .inner
+                        .get_world()
+                        .unwrap()
+                        .get_direct_space_state()
+                        .unwrap();
+
+                    let avoidance_t = 10.;
+
+                    let from = unit.inner.get_translation();
+                    let dist = (dest.0 - from).length();
+                    let mul = if dist > avoidance_t { avoidance_t } else { dist };
+                    let mut to = from + (dest.0 - from).normalize() * mul;
+                    to.y = from.y;
+                    let col_mask = 1;
+
+                    debug_lines.add(from, to, Color::rgb(1.0, 0., 0.));
+
+                    let res = space_state.intersect_ray(
+                        from,
+                        to,
+                        VariantArray::new(),
+                        col_mask,
+                        true,  // bodies
+                        false, // areas
+                    );
+
+                    let data = res.get(&"position".into());
+                    let normal = res.get(&"normal".into());
+
+                    let normal = match normal.try_to_vector3() {
+                        Some(n) => n,
+                        None => continue,
+                    };
+
+                    let pos = match data.try_to_vector3() {
+                        Some(pos) => pos,
+                        None => continue,
+                    };
+
+                    eprintln!("{} | {} | {}", dist, pos, to.y);
+
+                    debug_lines.add(pos, pos + normal * 5., Color::rgb(0., 0., 1.));
+                    force.separation += to_2d(normal * 5.);
                 }
             }
         })
@@ -208,11 +266,10 @@ fn apply_gravity() -> Box<dyn Runnable> {
                 if unit.inner.is_on_floor() {
                     continue;
                 }
-                unit
-                    .inner
+                unit.inner
                     .move_and_slide_default(GRAVITY, Vector3::new(0., 1., 0.));
             }
-    })
+        })
 }
 
 pub fn movement_systems(builder: Builder) -> Builder {
@@ -221,6 +278,7 @@ pub fn movement_systems(builder: Builder) -> Builder {
         .add_thread_local(reset_acceleration())
         .add_thread_local(reset_forces())
         .add_thread_local(seek())
+        .add_thread_local(avoid())
         .add_thread_local(apply_forces())
         .add_thread_local(rotate_unit())
         .add_thread_local(move_units())
