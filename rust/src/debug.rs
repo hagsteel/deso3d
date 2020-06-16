@@ -20,7 +20,6 @@ impl DebugDraw {
     }
 
     pub fn set_lines(&mut self, mut lines: Vec<Line>) {
-        eprintln!("{:?}", lines);
         self.lines.append(&mut lines);
     }
 
@@ -37,7 +36,6 @@ impl DebugDraw {
             let col = line.2;
 
             owner.draw_line(start, end, col, 2., false);
-            eprintln!("{:?}", "drew line");
         }
     }
 }

@@ -1,13 +1,16 @@
+use euclid::{Rotation2D, UnknownUnit};
 use gdnative::{Rect2, Vector2, Vector3};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
-use serde::{Serialize, Deserialize};
-use euclid::{Rotation2D, UnknownUnit};
+use serde::{Deserialize, Serialize};
 
 use crate::camera::{Camera, Drag, SelectionBox, RAY_LENGTH};
+use crate::contextmenu::ContextMenuNode;
+use crate::formation::{index_to_x_y, FormationPos};
 use crate::input::{MouseButton, MousePos, LMB, RMB};
-use crate::movement::{Destination, Pos, to_3d, to_2d};
-use crate::formation::{FormationPos, index_to_x_y};
+use crate::movement::{to_2d, to_3d, Destination, Pos};
+use crate::unit::Unit;
+use crate::gameworld::ClickedState;
 
 type Rotation2 = Rotation2D<f32, UnknownUnit, UnknownUnit>;
 
@@ -119,7 +122,7 @@ fn player_find_destinations() -> Box<dyn Runnable> {
                 .collect::<Vec<_>>();
 
             if positions.len() == 0 {
-                return
+                return;
             }
 
             let (offset, rotation) = {
@@ -144,7 +147,7 @@ fn player_find_destinations() -> Box<dyn Runnable> {
 
                 (
                     Vector2::new(offset_x as f32, offset_y as f32),
-                    Rotation2::radians(dir.y.atan2(dir.x))
+                    Rotation2::radians(dir.y.atan2(dir.x)),
                 )
             };
 
@@ -158,9 +161,74 @@ fn player_find_destinations() -> Box<dyn Runnable> {
         })
 }
 
+fn player_open_context_menu() -> Box<dyn Runnable> {
+    SystemBuilder::new("player open context menu")
+        .read_resource::<Camera>()
+        .write_resource::<MouseButton>()
+        .read_resource::<MousePos>()
+        .with_query(<(Read<Unit>, Write<ContextMenuNode>)>::query().filter(tag::<PlayerId>()))
+        .build_thread_local(|cmd, world, resources, units| {
+            let (camera, mouse_btn, mouse_pos) = resources;
+
+            if !mouse_btn.button_pressed(RMB) {
+                return;
+            }
+
+            // If the unit is clicked then consume the input
+            let dict = camera.object_from_camera(mouse_pos.global(), RAY_LENGTH, 4);
+            if dict.is_empty() {
+                units
+                    .iter_mut(world)
+                    .for_each(|(_, mut menu)| unsafe { menu.0.set_visible(false) });
+                return;
+            }
+
+            let collider_id = match dict.get(&"collider_id".into()).try_to_i64() {
+                Some(r) => r,
+                None => return,
+            };
+
+            for (unit, mut menu) in units.iter_mut(world) {
+                let instance_id = unsafe { unit.inner.get_instance_id() };
+                if instance_id == collider_id {
+                    unsafe {
+                        menu.0.set_position(mouse_pos.global(), false);
+                        menu.0.set_visible(true);
+                    }
+                } else {
+                    unsafe { (menu.0).set_visible(false) };
+                }
+            }
+
+            // 1.  Hide all context menues
+            // 2.  Show context menu
+        })
+}
+
+fn something_clicked() -> Box<dyn Runnable> {
+    SystemBuilder::new("something_clicked")
+        .write_resource::<ClickedState>()
+        .with_query(<Write<ContextMenuNode>>::query())
+        .build_thread_local(|cmd, world, state, query| {
+
+            if state.clicked {
+                eprintln!("{:?}", "it was clicked!");
+                state.clicked = false;
+
+                for mut menu in query.iter_mut(world) {
+                    unsafe {
+                        menu.0.set_visible(false);
+                    }
+                }
+            }
+            
+        })
+}
 
 pub fn player_systems(builder: Builder) -> Builder {
     builder
         .add_thread_local(select_units())
+        .add_thread_local(player_open_context_menu())
         .add_thread_local(player_find_destinations())
+        .add_thread_local(something_clicked())
 }

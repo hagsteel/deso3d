@@ -14,11 +14,6 @@ impl MainMenu {
     }
 
     #[export]
-    pub fn _ready(&self, owner: Control) {
-        eprintln!("hello");
-    }
-
-    #[export]
     pub fn new_game(&self, owner: Control, event: InputEvent) {
         if let Some(ev) = event.cast::<InputEventMouse>() {
             if ev.is_pressed() {

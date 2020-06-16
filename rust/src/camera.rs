@@ -1,12 +1,12 @@
 use gdnative::{
-    Area, Camera as GodotCamera, MeshInstance, PhysicsServer, Variant, VariantArray, Vector2,
-    Vector3,
+    Area, Camera as GodotCamera, Dictionary, MeshInstance, PhysicsServer, Variant, VariantArray,
+    Vector2, Vector3,
 };
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 
 use crate::gameworld::{ClickIndicator, Delta};
-use crate::input::{Keyboard, Keys, MousePos, MouseButton, RMB};
+use crate::input::{Keyboard, Keys, MouseButton, MousePos, RMB};
 
 pub const RAY_LENGTH: f32 = 1000.;
 const CAMERA_SPEED: f32 = 80.;
@@ -52,34 +52,41 @@ impl Camera {
         ray_length: f32,
         col_mask: i64,
     ) -> Option<Vector3> {
-        let from = unsafe { self.0.project_ray_origin(mouse_pos) };
-        let to = from + unsafe { self.0.project_ray_normal(mouse_pos) } * ray_length;
+        let dict = self.object_from_camera(mouse_pos, ray_length, col_mask);
 
-        let rid = unsafe {
-            let world = self.0.get_world().expect("failed to get world");
-            world.get_space()
-        };
+        let pos_variant = dict.get(&"position".into());
+        if pos_variant.is_nil() {
+            return None;
+        }
+        let pos = pos_variant.to_vector3();
+        Some(pos)
+    }
 
-        let mut phys_server = PhysicsServer::godot_singleton();
-        let mut direct_state = phys_server
-            .space_get_direct_state(rid)
-            .expect("failed to get direct state");
-
+    pub fn object_from_camera(
+        &self,
+        mouse_pos: Vector2,
+        ray_length: f32,
+        col_mask: i64,
+    ) -> Dictionary {
         unsafe {
-            let dict = direct_state.intersect_ray(
+            let from = self.0.project_ray_origin(mouse_pos);
+            let to = from + self.0.project_ray_normal(mouse_pos) * ray_length;
+
+            let mut space_state = self
+                .0
+                .get_world()
+                .unwrap()
+                .get_direct_space_state()
+                .unwrap();
+
+            space_state.intersect_ray(
                 from,                // From
                 to,                  // To
                 VariantArray::new(), // Ignored objects
                 col_mask,            // Collision mask
                 true,                // Collide with bodies
                 true,                // Collide with areas
-            );
-            let pos_variant = dict.get(&Variant::from_godot_string(&"position".into()));
-            if pos_variant.is_nil() {
-                return None;
-            }
-            let pos = pos_variant.to_vector3();
-            Some(pos)
+            )
         }
     }
 }
