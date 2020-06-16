@@ -17,11 +17,13 @@ mod formation;
 mod animation;
 // mod dragndrop;
 mod debug;
+mod contextmenu;
 
 fn init(handle: init::InitHandle) {
     handle.add_class::<gameworld::GameWorld>();
     handle.add_class::<main_menu::MainMenu>();
     handle.add_class::<debug::DebugDraw>();
+    handle.add_class::<contextmenu::ContextMenu>();
 }
 
 godot_gdnative_init!();

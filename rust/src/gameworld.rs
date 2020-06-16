@@ -23,6 +23,7 @@ use crate::spawner;
 use crate::tilemap::{draw_tilemap, Coords, TileMap};
 use crate::unit::Unit;
 use crate::debug::DebugDraw;
+use crate::contextmenu::ContextMenuNode;
 
 fn setup_physics_schedule() -> Schedule {
     let builder = Schedule::builder();
@@ -89,6 +90,11 @@ impl DebugLines {
     }
 }
 
+#[derive(Debug)]
+pub struct ClickedState {
+    pub clicked: bool
+}
+
 // -----------------------------------------------------------------------------
 //     - Godot node -
 // -----------------------------------------------------------------------------
@@ -115,6 +121,7 @@ impl GameWorld {
         resources.insert(Drag::Empty);
         resources.insert(Formation::new());
         resources.insert(DebugLines::new());
+        resources.insert(ClickedState { clicked: false });
 
         Self {
             resources,
@@ -193,10 +200,12 @@ impl GameWorld {
             }
 
             let mut unit = spawner::spawn_unit();
+            let mut context_menu = spawner::spawn_context_menu();
 
             unsafe {
                 owner.add_child(Some(unit.to_node()), false);
                 unit.set_translation(Vector3::new(x, y, z));
+                unit.add_child(Some(context_menu.to_node()), false);
             }
 
             let pos = unsafe { unit.get_translation() };
@@ -230,12 +239,13 @@ impl GameWorld {
                         formation_pos,
                         AnimationTree::new(anim_tree),
                         Animation::Idle,
+                        ContextMenuNode(context_menu),
                     )),
                 );
             });
         }
 
-        for x in 15..15 {
+        for x in 15..15 { // Remember why you did this? No? Good luck to you!
             let x = x as f32 * 4.;
             let y = 12.;
             let z = 26.;
@@ -354,5 +364,10 @@ impl GameWorld {
         with_world(|world| {
             self.physics.execute(world, &mut self.resources);
         });
+    }
+
+    // TODO: delete this function (it's in the name)
+    pub fn delete_me(&mut self) {
+        self.resources.get_mut::<ClickedState>().map(|mut s| s.clicked = true);
     }
 }

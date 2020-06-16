@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=2]
+[gd_scene load_steps=13 format=2]
 
 [ext_resource path="res://libdeso3d.gdnlib" type="GDNativeLibrary" id=1]
 [ext_resource path="res://fonts/hack.tres" type="DynamicFont" id=2]
@@ -30,9 +30,6 @@ albedo_color = Color( 1, 0.368627, 0.368627, 1 )
 extents = Vector3( 100, 1, 100 )
 
 [sub_resource type="SphereMesh" id=7]
-
-[sub_resource type="CubeMesh" id=8]
-size = Vector3( 0.5, 0.5, 0.5 )
 
 [node name="GameWorld" type="Spatial"]
 script = SubResource( 1 )
@@ -97,6 +94,7 @@ shape = SubResource( 6 )
 
 [node name="ClickIndicator" type="MeshInstance" parent="."]
 transform = Transform( 0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0 )
+visible = false
 mesh = SubResource( 7 )
 material/0 = SubResource( 3 )
 
@@ -107,10 +105,6 @@ transform = Transform( 0.25, 0, 0, 0, 0.25, 0, 0, 0, 0.25, 67.1, 0.6, 17.3 )
 transform = Transform( 1, 0, 0, 0, 0.642788, 0.766044, 0, -0.766044, 0.642788, 11.372, 19.8575, 0.2 )
 light_color = Color( 1, 0.960784, 0, 1 )
 shadow_enabled = true
-
-[node name="RayIndicator" type="MeshInstance" parent="."]
-mesh = SubResource( 8 )
-material/0 = null
 
 [node name="DebugDraw" type="Node2D" parent="."]
 script = ExtResource( 5 )
