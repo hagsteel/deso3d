@@ -48,6 +48,7 @@ pub struct Destination(pub Vector3);
 #[derive(Debug, Clone, Copy)]
 pub struct Acceleration(pub Vector3);
 
+#[derive(Debug)]
 pub struct Forces {
     seek: Vector2,
     separation: Vector2,
@@ -100,6 +101,7 @@ fn apply_forces() -> Box<dyn Runnable> {
 fn seek() -> Box<dyn Runnable> {
     SystemBuilder::new("apply directional velocity")
         .read_resource::<Delta>()
+        .write_resource::<DebugLines>()
         .with_query(<(
             Read<MaxSpeed>,
             Read<Pos>,
@@ -107,7 +109,7 @@ fn seek() -> Box<dyn Runnable> {
             Write<Forces>,
             Read<Velocity>,
         )>::query())
-        .build_thread_local(|_, world, delta, query| {
+        .build_thread_local(|_, world, (delta, debug_lines), query| {
             for (max_speed, pos, dest, mut forces, velocity) in query.iter_mut(world) {
                 let mut diff = to_2d(dest.0 - pos.0);
                 let dist = diff.length();
@@ -120,6 +122,8 @@ fn seek() -> Box<dyn Runnable> {
                     diff += diff.normalize() * max_speed.0;
                     forces.seek = diff;
                 }
+
+                debug_lines.add(pos.0, pos.0 + to_3d(forces.seek), Color::rgb(0., 1., 0.5), 5.);
             }
         })
 }
@@ -171,31 +175,41 @@ fn avoid() -> Box<dyn Runnable> {
                         None => continue,
                     };
 
-                    // let mut colliding = true;
+                    let mut colliding = true;
 
-                    // while colliding {
+                    let mut turn_d = 1.;
+                    while colliding {
 
-                        // let res = space_state.intersect_ray(
-                        //     from,
-                        //     from + new_dir * 5.,
-                        //     VariantArray::new(),
-                        //     col_mask,
-                        //     true,  // bodies
-                        //     false, // areas
-                        // );
+                        let dir = (pos - from).normalize();
+                        let angle = Angle::degrees(turn_d);
+                        let rotation = Rotation3D::around_y(angle);
+                        let new_dir = rotation.transform_vector3d(dir);
+                        let avoidance_vector = from + (new_dir * avoidance_t);
 
-                    let dir = (pos - from).normalize();
-                    let angle = Angle::degrees(15.);
-                    let rotation = Rotation3D::around_y(angle);
-                    let new_dir = rotation.transform_vector3d(dir);
+                        let res = space_state.intersect_ray(
+                            from,
+                            avoidance_vector,
+                            VariantArray::new(),
+                            col_mask,
+                            true,  // bodies
+                            false, // areas
+                        );
 
-                    // let sep_force = from / 2. + new_dir * 15.;
-                    let sep_force = new_dir * 1500.;
-                    debug_lines.add(from, from + new_dir * 15., Color::rgb(0., 1., 1.), 7.);
-                    debug_lines.add(pos, pos + normal * 5., Color::rgb(0., 0., 1.), 5.);
-                    force.separation += to_2d(sep_force);
+                        if res.is_empty() {
+                            break;
+                        }
 
-                    // }
+                        turn_d += 1.;
+
+                        debug_lines.add(from, avoidance_vector, Color::rgb(0., 1., 1.), 7.);
+                        debug_lines.add(pos, pos + normal * 5., Color::rgb(0., 0., 1.), 5.);
+
+                        // let sep_force = from / 2. + new_dir * 15.;
+                        let sep_force = new_dir;
+                        // force.separation += to_2d(sep_force);
+                        force.seek += to_2d(sep_force * 12.);
+
+                    }
                 }
             }
         })

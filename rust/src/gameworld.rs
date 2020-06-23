@@ -1,12 +1,12 @@
 use gdextras::input::InputEventExt;
 use gdextras::node_ext::NodeExt;
 use gdextras::some_or_bail;
-use gdnative::{
-    godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
-    methods, AnimationTree as GDAnimationTree, Area, Camera as GodotCamera, CanvasLayer, Color,
+use gdnative::api::{
+    AnimationTree as GDAnimationTree, Area, Camera as GodotCamera, CanvasLayer,
     Control, GridMap, InputEvent, InputEventKey, InputEventMouse, InputEventMouseButton, Label,
-    MeshInstance, NativeClass, Node2D, Performance, Spatial, Vector2, Vector3,
+    MeshInstance, Node2D, Performance, Spatial,
 };
+use gdnative::{Vector2, Vector3, Color, NativeClass, methods};
 use lazy_static::lazy_static;
 use legion::prelude::*;
 use std::sync::Mutex;
@@ -109,7 +109,7 @@ pub struct GameWorld {
 
 #[methods]
 impl GameWorld {
-    pub fn _init(_owner: Spatial) -> Self {
+    pub fn _init(_owner: &Spatial) -> Self {
         let physics = setup_physics_schedule();
         let process = setup_schedule();
         let mut resources = Resources::default();
@@ -131,12 +131,12 @@ impl GameWorld {
     }
 
     #[export]
-    pub fn _ready(&mut self, mut owner: Spatial) {
+    pub fn _ready(&mut self, owner: &mut Spatial) {
         let click_indicator = some_or_bail!(
             owner.get_and_cast::<MeshInstance>("ClickIndicator"),
             "failed to get click indicator"
         );
-        self.resources.insert(ClickIndicator(click_indicator));
+        // self.resources.insert(ClickIndicator(click_indicator));
 
         // Tilemap
         let gridmap = owner
@@ -279,7 +279,7 @@ impl GameWorld {
     }
 
     #[export]
-    pub fn _unhandled_input(&mut self, owner: Spatial, event: InputEvent) {
+    pub fn _unhandled_input(&mut self, owner: &Spatial, event: InputEvent) {
         if event.action_pressed("ui_cancel") {
             unsafe { owner.get_tree().map(|mut tree| tree.quit(0)) };
         }
@@ -335,7 +335,7 @@ impl GameWorld {
     }
 
     #[export]
-    pub fn _process(&mut self, owner: Spatial, _: f64) {
+    pub fn _process(&mut self, owner: &Spatial, _: f64) {
         with_world(|world| {
             self.process.execute(world, &mut self.resources);
         });
@@ -357,7 +357,7 @@ impl GameWorld {
     }
 
     #[export]
-    pub fn _physics_process(&mut self, _: Spatial, delta: f64) {
+    pub fn _physics_process(&mut self, _: &Spatial, delta: f64) {
         self.resources
             .get_mut::<Delta>()
             .map(|mut d| d.0 = delta as f32);

@@ -11,7 +11,8 @@ crate-type = ["dylib"]
 godot_test = []
 
 [dependencies]
-gdnative = "0.8.0"
+# gdnative = "0.8.0"
+gdnative = { git = "https://github.com/godot-rust/godot-rust/" }
 gdextras = { path = "../../gdextras"} 
 legion = { git = "https://github.com/tomgillen/legion" } 
 lazy_static = "1.4.0"

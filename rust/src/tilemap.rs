@@ -36,6 +36,7 @@ pub fn draw_tilemap() -> Box<dyn Runnable> {
         .write_resource::<Coords>()
         .write_resource::<TileMap>()
         .build_thread_local(|_, _, (coords, tilemap), _| {
+            return;
             if coords.cells.len() == 0 {
                 return;
             }
