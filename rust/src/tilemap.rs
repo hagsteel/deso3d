@@ -1,9 +1,10 @@
-use gdnative::{GridMap, Vector2};
+use gdnative::api::GridMap;
+use gdnative::{Ptr, Vector2};
 use legion::prelude::*;
 
 use crate::procgen::{pack_vec2, random_bool};
 
-pub struct TileMap(pub GridMap);
+pub struct TileMap(pub Ptr<GridMap>);
 
 unsafe impl Send for TileMap {}
 unsafe impl Sync for TileMap {}
@@ -36,7 +37,10 @@ pub fn draw_tilemap() -> Box<dyn Runnable> {
         .write_resource::<Coords>()
         .write_resource::<TileMap>()
         .build_thread_local(|_, _, (coords, tilemap), _| {
-            return;
+            return; // TODO: eh???
+
+            let tilemap = unsafe { tilemap.0.assume_safe() };
+
             if coords.cells.len() == 0 {
                 return;
             }
@@ -50,9 +54,7 @@ pub fn draw_tilemap() -> Box<dyn Runnable> {
                 let cell_type = if random_bool(seed, 100) { 1 } else { 0 };
 
                 // random_choice(&[2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], seed);
-                unsafe {
-                    tilemap.0.set_cell_item(x, y, z, cell_type, 0);
-                }
+                tilemap.set_cell_item(x, y, z, cell_type, 0);
             }
         })
 }

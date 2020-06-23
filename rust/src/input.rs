@@ -1,4 +1,5 @@
-use gdnative::{InputEventMouseButton, Vector2};
+use gdnative::{Vector2, Ref};
+use gdnative::api::InputEventMouseButton;
 use bitflags::bitflags;
 
 pub const LMB: i64 = 1;
@@ -14,10 +15,10 @@ impl MouseButton {
         *self = Self::Empty;
     }
 
-    pub fn from_event(ev: InputEventMouseButton) -> Self {
+    pub fn from_event(ev: Ref<InputEventMouseButton>) -> Self {
         MouseButton::Mouse {
             pressed: ev.is_pressed(),
-            button_index: ev.get_button_index(),
+            button_index: ev.button_index(),
         }
     }
 

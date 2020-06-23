@@ -1,7 +1,5 @@
-use gdnative::{
-    Area, Camera as GodotCamera, Dictionary, MeshInstance, PhysicsServer, Variant, VariantArray,
-    Vector2, Vector3,
-};
+use gdnative::api::{Area, Camera as GodotCamera, MeshInstance, PhysicsServer};
+use gdnative::{Dictionary, Variant, VariantArray, Vector2, Vector3, Ptr};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 
@@ -20,12 +18,12 @@ pub enum Drag {
     Start(Vector3),
 }
 
-pub struct SelectionBox(pub MeshInstance);
+pub struct SelectionBox(pub Ptr<MeshInstance>);
 
 unsafe impl Send for SelectionBox {}
 unsafe impl Sync for SelectionBox {}
 
-pub struct UnitSelectionArea(pub Area);
+pub struct UnitSelectionArea(pub Ptr<Area>);
 
 unsafe impl Send for UnitSelectionArea {}
 unsafe impl Sync for UnitSelectionArea {}
@@ -40,7 +38,7 @@ impl Drag {
     }
 }
 
-pub struct Camera(pub GodotCamera);
+pub struct Camera(pub Ptr<GodotCamera>);
 
 unsafe impl Send for Camera {}
 unsafe impl Sync for Camera {}
@@ -69,23 +67,25 @@ impl Camera {
         col_mask: i64,
     ) -> Dictionary {
         unsafe {
-            let from = self.0.project_ray_origin(mouse_pos);
-            let to = from + self.0.project_ray_normal(mouse_pos) * ray_length;
+            let camera = unsafe { self.0.assume_safe_during(self) };
+            let from = camera.project_ray_origin(mouse_pos);
+            let to = from + camera.project_ray_normal(mouse_pos) * ray_length;
 
-            let mut space_state = self
-                .0
+            let mut space_state = unsafe { camera
                 .get_world()
                 .unwrap()
-                .get_direct_space_state()
-                .unwrap();
+                .direct_space_state()
+                .unwrap()
+                .assume_safe()
+            };
 
             space_state.intersect_ray(
-                from,                // From
-                to,                  // To
-                VariantArray::new(), // Ignored objects
-                col_mask,            // Collision mask
-                true,                // Collide with bodies
-                true,                // Collide with areas
+                from,                       // From
+                to,                         // To
+                VariantArray::new_shared(), // Ignored objects
+                col_mask,                   // Collision mask
+                true,                       // Collide with bodies
+                true,                       // Collide with areas
             )
         }
     }
@@ -103,6 +103,8 @@ fn move_camera() -> Box<dyn Runnable> {
         .read_resource::<Delta>()
         .build_thread_local(|_, _, res, _| {
             let (keyboard, camera, unit_sel_area, delta) = res;
+            let unit_sel_area = unsafe { unit_sel_area.0.assume_safe() };
+            let camera = unsafe { camera.0.assume_safe() };
 
             if keyboard.keys() == Keys::EMPTY {
                 return;
@@ -127,12 +129,12 @@ fn move_camera() -> Box<dyn Runnable> {
             }
 
             unsafe {
-                let current_translation = camera.0.get_translation();
+                let current_translation = camera.translation();
                 translation *= CAMERA_SPEED * delta.0;
-                camera.0.set_translation(current_translation + translation);
-                let mut camera_x_z = camera.0.get_translation();
+                camera.set_translation(current_translation + translation);
+                let mut camera_x_z = camera.translation();
                 camera_x_z.y = 0.;
-                unit_sel_area.0.set_translation(camera_x_z);
+                unit_sel_area.set_translation(camera_x_z);
             }
         })
 }
@@ -145,6 +147,7 @@ fn set_click_indicator() -> Box<dyn Runnable> {
         .read_resource::<MousePos>()
         .build_thread_local(|_cmd, _world, resources, _query| {
             let (camera, click_indicator, mouse_btn, mouse_pos) = resources;
+            let click_indicator = unsafe { click_indicator.0.assume_safe() };
             if !mouse_btn.button_pressed(RMB) {
                 return;
             }
@@ -154,7 +157,7 @@ fn set_click_indicator() -> Box<dyn Runnable> {
                 None => return,
             };
 
-            click_indicator.set_position(dest_pos);
+            click_indicator.set_translation(dest_pos);
         })
 }
 

@@ -1,4 +1,5 @@
-use gdnative::{AnimationNodeStateMachinePlayback, AnimationTree as GDAnimationTree};
+use gdnative::api::{AnimationNodeStateMachinePlayback, AnimationTree as GDAnimationTree};
+use gdnative::Ptr;
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 
@@ -11,27 +12,27 @@ pub enum Animation {
     Run,
 }
 
-pub struct AnimationTree(GDAnimationTree);
+pub struct AnimationTree(Ptr<GDAnimationTree>);
 
 impl AnimationTree {
-    pub fn new(anim_tree: GDAnimationTree) -> Self {
+    pub fn new(anim_tree: Ptr<GDAnimationTree>) -> Self {
         Self(anim_tree)
     }
 }
 
-unsafe impl Send for AnimationTree {}
-unsafe impl Sync for AnimationTree {}
+// unsafe impl Send for AnimationTree {}
+// unsafe impl Sync for AnimationTree {}
 
 // -----------------------------------------------------------------------------
 //     - Systems -
 // -----------------------------------------------------------------------------
-
 fn animate() -> Box<dyn Runnable> {
     SystemBuilder::new("animate")
         .with_query(<(Read<Animation>, Write<AnimationTree>)>::query())
         .build_thread_local(|cmd, world, resources, animations| {
             for (anim, anim_tree) in animations.iter_mut(world) {
-                let playback = unsafe { anim_tree.0.get("parameters/playback".into()) };
+                let anim_tree = unsafe { anim_tree.0.assume_safe() };
+                let playback = anim_tree.get("parameters/playback".into());
                 let mut playback = match playback.try_to_object::<AnimationNodeStateMachinePlayback>() {
                     Some(p) => p,
                     None => {

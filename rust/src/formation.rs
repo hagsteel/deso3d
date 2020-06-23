@@ -1,6 +1,7 @@
 use bitter::Bitter;
 use gdextras::node_ext::NodeExt;
-use gdnative::{Color, Control, TextureRect, Vector2};
+use gdnative::api::{Control, TextureRect};
+use gdnative::{Color, Ptr, Vector2};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 
@@ -89,10 +90,10 @@ pub struct FormationUnitMoved;
 // -----------------------------------------------------------------------------
 //     - Resources -
 // -----------------------------------------------------------------------------
-pub struct FormationUI(TextureRect);
+pub struct FormationUI(Ptr<TextureRect>);
 
 impl FormationUI {
-    pub fn new(inner: TextureRect) -> Self {
+    pub fn new(inner: Ptr<TextureRect>) -> Self {
         Self(inner)
     }
 }
@@ -100,15 +101,11 @@ impl FormationUI {
 unsafe impl Send for FormationUI {}
 unsafe impl Sync for FormationUI {}
 
-pub struct FormationUnit(TextureRect);
+pub struct FormationUnit(Ptr<TextureRect>);
 
 impl FormationUnit {
-    pub fn new(inner: TextureRect) -> Self {
+    pub fn new(inner: Ptr<TextureRect>) -> Self {
         Self(inner)
-    }
-
-    pub fn set_color(&mut self, color: Color) {
-        unsafe { self.0.set_modulate(color) };
     }
 }
 
@@ -144,9 +141,11 @@ fn select_formation_unit() -> Box<dyn Runnable> {
                 return;
             }
 
-            let mouse_pos = formation_ui.0.get_local_mouse_position();
+            let formation_ui = unsafe { formation_ui.0.assume_safe() };
 
-            let mut rect = formation_ui.0.get_rect();
+            let mouse_pos = formation_ui.get_local_mouse_position();
+
+            let mut rect = formation_ui.get_rect();
             rect.origin = Vector2::zero().to_point();
             if !rect.contains(mouse_pos.to_point()) {
                 return;
@@ -154,17 +153,18 @@ fn select_formation_unit() -> Box<dyn Runnable> {
             mouse_btn.consume();
 
             for (ent, mut unit) in units.iter_entities_mut(world) {
-                let rect = unit.0.get_rect();
+                let unit = unsafe { unit.0.assume_safe() };
+                let rect = unit.get_rect();
 
                 if rect.contains(mouse_pos.to_point()) {
                     cmd.add_component(ent, StartDrag(mouse_pos));
                     cmd.add_tag(ent, FormationUnitSelected);
 
-                    let mut pending = formation_ui.0.get_and_cast::<Control>("Pending").unwrap();
-                    let mut moving = formation_ui.0.get_and_cast::<Control>("Moving").unwrap();
-                    pending.remove_child(Some(unit.0.to_node()));
-                    moving.add_child(Some(unit.0.to_node()), false);
-                    unit.0.set_owner(Some(moving.to_node()));
+                    let mut pending = formation_ui.get_and_cast::<Control>("Pending");
+                    let mut moving = formation_ui.get_and_cast::<Control>("Moving");
+                    pending.remove_child(Some(unit.to_node()));
+                    moving.add_child(Some(unit.to_node()), false);
+                    unit.set_owner(Some(moving.to_node()));
                 }
             }
         })
@@ -190,13 +190,16 @@ fn deselect_formation_unit() -> Box<dyn Runnable> {
                     None => return,
                 };
 
-                let mouse_pos = unsafe { formation_ui.0.get_local_mouse_position() };
+                let formation_ui = unsafe { formation_ui.0.assume_safe() };
+
+                let mouse_pos = formation_ui.get_local_mouse_position();
                 let mouse_pos = snap_to_pos(mouse_pos);
 
                 // Check if there is already a unit at the final destination
                 for mut unit in deselected_units.iter_mut(world) {
-                    if unsafe { unit.0.get_rect() }.contains(mouse_pos.to_point()) {
-                        unsafe { unit.0.set_position(start_pos, false) };
+                    let unit = unsafe { unit.0.assume_safe() };
+                    if unit.get_rect().contains(mouse_pos.to_point()) {
+                        unit.set_position(start_pos, false);
                     }
                 }
 
@@ -204,17 +207,15 @@ fn deselect_formation_unit() -> Box<dyn Runnable> {
                     cmd.remove_tag::<FormationUnitSelected>(ent);
                     cmd.add_tag(ent, FormationUnitMoved);
 
-                    unsafe {
-                        unit.0.set_position(mouse_pos, false);
+                    let unit = unsafe { unit.0.assume_safe() };
+                    unit.set_position(mouse_pos, false);
 
-                        // Reparent the node to "Pending" again
-                        let mut pending =
-                            formation_ui.0.get_and_cast::<Control>("Pending").unwrap();
-                        let mut moving = formation_ui.0.get_and_cast::<Control>("Moving").unwrap();
-                        moving.remove_child(Some(unit.0.to_node()));
-                        pending.add_child(Some(unit.0.to_node()), false);
-                        unit.0.set_owner(Some(pending.to_node()));
-                    }
+                    // Reparent the node to "Pending" again
+                    let mut pending = formation_ui.get_and_cast::<Control>("Pending");
+                    let mut moving = formation_ui.get_and_cast::<Control>("Moving");
+                    moving.remove_child(Some(unit.to_node()));
+                    pending.add_child(Some(unit.to_node()), false);
+                    unit.set_owner(Some(pending.to_node()));
                 }
             },
         )
@@ -224,12 +225,13 @@ fn drag_formation_unit() -> Box<dyn Runnable> {
     SystemBuilder::new("drag formation unit")
         .read_resource::<FormationUI>()
         .with_query(<Write<FormationUnit>>::query().filter(tag::<FormationUnitSelected>()))
-        .build_thread_local(|_, world, formation_ui, units| unsafe {
+        .build_thread_local(|_, world, formation_ui, units| {
+            let formation_ui = unsafe { formation_ui.0.assume_safe() };
             for mut unit in units.iter_mut(world) {
-                let rect = unit.0.get_rect();
-                let mouse_pos =
-                    formation_ui.0.get_local_mouse_position() - rect.size.to_vector() / 2.;
-                unit.0.set_position(mouse_pos, false);
+                let unit = unsafe { unit.0.assume_safe() };
+                let rect = unit.get_rect();
+                let mouse_pos = formation_ui.get_local_mouse_position() - rect.size.to_vector() / 2.;
+                unit.set_position(mouse_pos, false);
             }
         })
 }
@@ -255,7 +257,8 @@ fn done_moving() -> Box<dyn Runnable> {
 
             // Set the bits containing units
             for (ent, unit) in units.iter_entities_mut(world) {
-                let unit_pos = unsafe { unit.0.get_position() } / 16.;
+                let unit = unsafe { unit.0.assume_safe() };
+                let unit_pos = unsafe { unit.position() } / 16.;
                 let index = pos_to_index(unit_pos) as u16;
                 formation.0.set_bit(index, true);
                 cmd.add_component(ent, FormationPos(index));

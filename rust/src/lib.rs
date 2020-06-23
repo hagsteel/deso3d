@@ -1,6 +1,6 @@
 use gdnative::*;
 
-mod game;
+// mod game;
 mod gameworld;
 mod input;
 mod movement;
@@ -12,16 +12,16 @@ mod procgen;
 mod player;
 mod saveload;
 mod enemy;
-mod main_menu;
+// mod main_menu;
 mod formation;
 mod animation;
-// mod dragndrop;
+// // mod dragndrop;
 mod debug;
 mod contextmenu;
 
 fn init(handle: init::InitHandle) {
     handle.add_class::<gameworld::GameWorld>();
-    handle.add_class::<main_menu::MainMenu>();
+    // handle.add_class::<main_menu::MainMenu>();
     handle.add_class::<debug::DebugDraw>();
     handle.add_class::<contextmenu::ContextMenu>();
 }
@@ -30,6 +30,12 @@ godot_gdnative_init!();
 godot_nativescript_init!(init);
 godot_gdnative_terminate!();
 
+#[macro_export]
+macro_rules! safe {
+    ($var:ident) => {
+        let $var = unsafe { $var.assume_safe() };
+    }
+}
 
 #[cfg(feature = "godot_test")]
 macro_rules! run_test {

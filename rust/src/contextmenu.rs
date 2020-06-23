@@ -1,7 +1,9 @@
 use gdextras::node_ext::NodeExt;
+
+use gdnative::api::{Control, InputEvent, InputEventMouseButton, Spatial};
 use gdnative::{
     godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
-    methods, Control, InputEvent, InputEventMouseButton, NativeClass, Spatial
+    methods, Variant, NativeClass, Ptr
 };
 
 use crate::gameworld::GameWorld;
@@ -9,7 +11,7 @@ use crate::gameworld::GameWorld;
 // -----------------------------------------------------------------------------
 //     - Component -
 // -----------------------------------------------------------------------------
-pub struct ContextMenuNode(pub Control);
+pub struct ContextMenuNode(pub Ptr<Control>);
 
 unsafe impl Send for ContextMenuNode {}
 unsafe impl Sync for ContextMenuNode {}
@@ -24,28 +26,31 @@ pub struct ContextMenu {}
 
 #[methods]
 impl ContextMenu {
-    pub fn _init(_owner: Control) -> Self {
+    pub fn _init(_owner: &Control) -> Self {
         Self {}
     }
 
     #[export]
-    pub fn selected_option(&self, owner: Control, event: InputEvent, value: i64) {
+    pub fn selected_option(&self, owner: &Control, event: Variant, value: i64) {
+        let event = event.try_to_object::<InputEvent>().expect("Was not an input event. (how?)");
         if let Some(ev) = event.cast::<InputEventMouseButton>() {
             if ev.is_pressed() {
-                unsafe { self.select_option(owner, value) };
+                self.select_option(owner, value);
             }
         }
     }
 
-    unsafe fn select_option(&self, owner: Control, _value: i64) -> Option<()> {
-        let mut gameworld = owner.get_tree()?.get_root()?.get_and_cast::<Spatial>("GameWorld")?;
-        // TODO: this is a terrible hack. Rethink this... please
-        // but don't give up on this, just come up with an interface that makes 
-        // sense and doesn't ruin everything
+    fn select_option(&self, owner: &Control, _value: i64) -> Option<()> {
+        let tree = unsafe { owner.get_tree()?.assume_safe_during(self) };
+        let gameworld = unsafe { tree.root()?.assume_safe_during(self) }
+            .get_and_cast::<Spatial>("GameWorld");
 
-        gameworld.with_script(|game: &mut GameWorld, _| {
-            game.delete_me();
-        });
+        // TODO: this is a terrible hack. Rethink this... please
+        // but don't give up on this, just come up with an interface that makes
+        // sense and doesn't ruin everything
+        // gameworld.with_script(|game: &mut GameWorld, _| {
+        //     game.delete_me();
+        // });
 
         Some(())
     }

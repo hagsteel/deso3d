@@ -128,96 +128,8 @@ fn seek() -> Box<dyn Runnable> {
         })
 }
 
-fn avoid() -> Box<dyn Runnable> {
-    SystemBuilder::new("avoid")
-        .write_resource::<DebugLines>()
-        .with_query(<(Read<Unit>, Read<Destination>, Write<Forces>)>::query())
-        .build_thread_local(|cmd, world, debug_lines, query| {
-            for (unit, dest, mut force) in query.iter_mut(world) {
-                unsafe {
-                    let mut space_state = unit
-                        .inner
-                        .get_world()
-                        .unwrap()
-                        .get_direct_space_state()
-                        .unwrap();
-
-                    let avoidance_t = 10.;
-
-                    let from = unit.inner.get_translation();
-                    let dist = (dest.0 - from).length();
-                    let mul = if dist > avoidance_t { avoidance_t } else { dist };
-                    let mut to = from + (dest.0 - from).normalize() * mul;
-                    to.y = from.y;
-                    let col_mask = 1;
-
-                    debug_lines.add(from, to, Color::rgb(1.0, 0., 0.), 2.);
-
-                    let res = space_state.intersect_ray(
-                        from,
-                        to,
-                        VariantArray::new(),
-                        col_mask,
-                        true,  // bodies
-                        false, // areas
-                    );
-
-                    let data = res.get(&"position".into());
-                    let normal = res.get(&"normal".into());
-
-                    let normal = match normal.try_to_vector3() {
-                        Some(n) => n,
-                        None => continue,
-                    };
-
-                    let pos = match data.try_to_vector3() {
-                        Some(pos) => pos,
-                        None => continue,
-                    };
-
-                    let mut colliding = true;
-
-                    let mut turn_d = 1.;
-                    while colliding {
-
-                        let dir = (pos - from).normalize();
-                        let angle = Angle::degrees(turn_d);
-                        let rotation = Rotation3D::around_y(angle);
-                        let new_dir = rotation.transform_vector3d(dir);
-                        let avoidance_vector = from + (new_dir * avoidance_t);
-
-                        let res = space_state.intersect_ray(
-                            from,
-                            avoidance_vector,
-                            VariantArray::new(),
-                            col_mask,
-                            true,  // bodies
-                            false, // areas
-                        );
-
-                        if res.is_empty() {
-                            break;
-                        }
-
-                        turn_d += 1.;
-
-                        debug_lines.add(from, avoidance_vector, Color::rgb(0., 1., 1.), 7.);
-                        debug_lines.add(pos, pos + normal * 5., Color::rgb(0., 0., 1.), 5.);
-
-                        // let sep_force = from / 2. + new_dir * 15.;
-                        let sep_force = new_dir;
-                        // force.separation += to_2d(sep_force);
-                        force.seek += to_2d(sep_force * 12.);
-
-                    }
-                }
-            }
-        })
-}
-
 fn move_units() -> Box<dyn Runnable> {
     SystemBuilder::new("move units")
-        .read_resource::<Delta>()
         .with_query(
             <(
                 Write<Pos>,
@@ -228,14 +140,13 @@ fn move_units() -> Box<dyn Runnable> {
             )>::query()
             .filter(component::<Destination>()),
         )
-        .build_thread_local(|_, world, delta, units| {
-            for (mut pos, mut unit, mut velocity, acc, max_speed) in units.iter_mut(world) {
+        .build_thread_local(|_, world, _, units| {
+            for (mut pos, unit, mut velocity, acc, max_speed) in units.iter_mut(world) {
+                let unit = unsafe { unit.inner.assume_safe() };
                 velocity.0 += acc.0;
                 velocity.0 = velocity.0.with_max_length(max_speed.0);
                 velocity.0.y = 0.;
-                velocity.0 = unit
-                    .inner
-                    .move_and_slide_default(velocity.0, Vector3::new(0., 1., 0.));
+                velocity.0 = unit.move_and_slide_default(velocity.0, Vector3::new(0., 1., 0.));
                 pos.0 = unit.translation();
             }
         })
@@ -245,7 +156,7 @@ fn rotate_unit() -> Box<dyn Runnable> {
     SystemBuilder::new("rotate unit")
         .with_query(<(Write<Unit>, Read<Pos>, Read<Destination>)>::query())
         .build_thread_local(|_, world, _, velocities| {
-            for (mut unit, pos, dest) in velocities.iter_mut(world) {
+            for (unit, pos, dest) in velocities.iter_mut(world) {
                 let diff = dest.0 - pos.0;
 
                 // To stop it flapping we can assume it's done if it's really close
@@ -255,23 +166,22 @@ fn rotate_unit() -> Box<dyn Runnable> {
 
                 let direction = diff.normalize();
 
-                unsafe {
-                    let current_rot = unit.inner.get_rotation();
-                    let cur_rot = Rotation3::around_y(Angle::radians(current_rot.y));
+                let unit = unsafe { unit.inner.assume_safe() };
+                let current_rot = unit.rotation();
+                let cur_rot = Rotation3::around_y(Angle::radians(current_rot.y));
 
-                    let rot_speed = 0.25;
-                    let mut current_transform = unit.inner.get_transform();
-                    let angle = Angle::radians(direction.x.atan2(direction.z));
-                    let new_rot = Rotation3::around_y(angle);
-                    let smooth_rot = cur_rot.slerp(&new_rot, rot_speed);
-                    let (x, y, z) = transform_to_x_y_z_direction(smooth_rot.to_transform());
+                let rot_speed = 0.25;
+                let mut current_transform = unit.transform();
+                let angle = Angle::radians(direction.x.atan2(direction.z));
+                let new_rot = Rotation3::around_y(angle);
+                let smooth_rot = cur_rot.slerp(&new_rot, rot_speed);
+                let (x, y, z) = transform_to_x_y_z_direction(smooth_rot.to_transform());
 
-                    current_transform.basis.elements[0] = x;
-                    current_transform.basis.elements[1] = y;
-                    current_transform.basis.elements[2] = z;
+                current_transform.basis.elements[0] = x;
+                current_transform.basis.elements[1] = y;
+                current_transform.basis.elements[2] = z;
 
-                    unit.inner.set_transform(current_transform);
-                }
+                unit.set_transform(current_transform);
             }
         })
 }
@@ -297,11 +207,13 @@ fn apply_gravity() -> Box<dyn Runnable> {
         .with_query(<Write<Unit>>::query())
         .build_thread_local(|cmd, world, resources, units| unsafe {
             for mut unit in units.iter_mut(world) {
-                if unit.inner.is_on_floor() {
+                let unit = unsafe { unit.inner.assume_safe() };
+
+                if unit.is_on_floor() {
                     continue;
                 }
-                unit.inner
-                    .move_and_slide_default(GRAVITY, Vector3::new(0., 1., 0.));
+
+                unit.move_and_slide_default(GRAVITY, Vector3::new(0., 1., 0.));
             }
         })
 }
@@ -312,7 +224,6 @@ pub fn movement_systems(builder: Builder) -> Builder {
         .add_thread_local(reset_acceleration())
         .add_thread_local(reset_forces())
         .add_thread_local(seek())
-        .add_thread_local(avoid())
         .add_thread_local(apply_forces())
         .add_thread_local(rotate_unit())
         .add_thread_local(move_units())

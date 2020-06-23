@@ -1,5 +1,5 @@
 use euclid::{Rotation2D, UnknownUnit};
-use gdnative::{Rect2, Vector2, Vector3};
+use gdnative::{Rect2, Vector2, Vector3, Ptr};
 use legion::prelude::*;
 use legion::systems::schedule::Builder;
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,7 @@ use crate::input::{MouseButton, MousePos, LMB, RMB};
 use crate::movement::{to_2d, to_3d, Destination, Pos};
 use crate::unit::Unit;
 use crate::gameworld::ClickedState;
+use crate::safe;
 
 type Rotation2 = Rotation2D<f32, UnknownUnit, UnknownUnit>;
 
@@ -44,6 +45,7 @@ fn select_units() -> Box<dyn Runnable> {
         .with_query(<Read<Pos>>::query().filter(tag::<PlayerId>()))
         .build_thread_local(|cmd, world, resources, unit_positions| {
             let (mouse_btn, mouse_pos, camera, selection_box, drag) = resources;
+            let selection_box = unsafe { selection_box.0.assume_safe() };
 
             let mut pos = match camera.pos_from_camera(mouse_pos.global(), RAY_LENGTH, 2) {
                 Some(p) => p,
@@ -71,7 +73,7 @@ fn select_units() -> Box<dyn Runnable> {
                     }
                 }
 
-                unsafe { selection_box.0.set_scale(Vector3::zero()) };
+                unsafe { selection_box.set_scale(Vector3::zero()) };
                 drag.clear();
                 return;
             }
@@ -81,16 +83,14 @@ fn select_units() -> Box<dyn Runnable> {
             match drag as &mut Drag {
                 Drag::Empty => {
                     drag.set_start(pos);
-                    unsafe { selection_box.0.set_translation(pos) };
+                    unsafe { selection_box.set_translation(pos) };
                 }
                 Drag::Start(start_pos) => {
                     let mut size = pos - *start_pos;
                     size.y = 0.3;
-                    unsafe {
-                        selection_box.0.set_scale(size);
-                        let translation = pos - size / 2.;
-                        selection_box.0.set_translation(translation);
-                    }
+                    selection_box.set_scale(size);
+                    let translation = pos - size / 2.;
+                    selection_box.set_translation(translation);
                 }
             }
         })
@@ -179,7 +179,7 @@ fn player_open_context_menu() -> Box<dyn Runnable> {
             if dict.is_empty() {
                 units
                     .iter_mut(world)
-                    .for_each(|(_, mut menu)| unsafe { menu.0.set_visible(false) });
+                    .for_each(|(_, mut menu)| unsafe { menu.0.assume_safe().set_visible(false) });
                 return;
             }
 
@@ -188,15 +188,16 @@ fn player_open_context_menu() -> Box<dyn Runnable> {
                 None => return,
             };
 
-            for (unit, mut menu) in units.iter_mut(world) {
-                let instance_id = unsafe { unit.inner.get_instance_id() };
+            for (unit, menu) in units.iter_mut(world) {
+                let unit = unsafe { unit.inner.assume_safe() };
+                let menu = unsafe { menu.0.assume_safe() };
+
+                let instance_id = unit.get_instance_id();
                 if instance_id == collider_id {
-                    unsafe {
-                        menu.0.set_position(mouse_pos.global(), false);
-                        menu.0.set_visible(true);
-                    }
+                    menu.set_position(mouse_pos.global(), false);
+                    menu.set_visible(true);
                 } else {
-                    unsafe { (menu.0).set_visible(false) };
+                    menu.set_visible(false);
                 }
             }
 
@@ -216,9 +217,8 @@ fn something_clicked() -> Box<dyn Runnable> {
                 state.clicked = false;
 
                 for mut menu in query.iter_mut(world) {
-                    unsafe {
-                        menu.0.set_visible(false);
-                    }
+                    let menu = unsafe { menu.0.assume_safe() };
+                    menu.set_visible(false);
                 }
             }
             

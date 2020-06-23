@@ -1,9 +1,15 @@
 use gdextras::node_ext::NodeExt;
 use gdextras::some_or_bail;
+// use gdnative::{
+//     godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
+//     methods, Color, InputEvent, NativeClass, Node2D, Vector2, Vector3, Camera,
+// };
+
 use gdnative::{
     godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
-    methods, Color, InputEvent, NativeClass, Node2D, Vector2, Vector3, Camera,
+    methods, NativeClass
 };
+use gdnative::api::{InputEvent, Node2D, Camera};
 
 use crate::gameworld::Line;
 
@@ -15,7 +21,7 @@ pub struct DebugDraw {
 
 #[methods]
 impl DebugDraw {
-    pub fn _init(_owner: Node2D) -> Self {
+    pub fn _init(_: &Node2D) -> Self {
         Self { lines: Vec::new() }
     }
 
@@ -24,13 +30,9 @@ impl DebugDraw {
     }
 
     #[export]
-    pub unsafe fn _draw(&mut self, mut owner: Node2D) {
+    pub fn _draw(&mut self, owner: &Node2D) {
         while let Some(line) = self.lines.pop() {
-            let camera = some_or_bail!(
-                owner.get_and_cast::<Camera>("../Camera"),
-                "failed to find camera"
-            );
-
+            let camera = owner.get_and_cast::<Camera>("../Camera");
             let start = camera.unproject_position(line.0);
             let end = camera.unproject_position(line.1);
             let col = line.2;

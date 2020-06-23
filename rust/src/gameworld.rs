@@ -1,18 +1,18 @@
 use gdextras::input::InputEventExt;
 use gdextras::node_ext::NodeExt;
-use gdextras::some_or_bail;
 use gdnative::api::{
-    AnimationTree as GDAnimationTree, Area, Camera as GodotCamera, CanvasLayer,
-    Control, GridMap, InputEvent, InputEventKey, InputEventMouse, InputEventMouseButton, Label,
-    MeshInstance, Node2D, Performance, Spatial,
+    AnimationTree as GDAnimationTree, Area, Camera as GodotCamera, CanvasLayer, Control, GridMap,
+    InputEvent, InputEventKey, InputEventMouse, InputEventMouseButton, Label, MeshInstance, Node2D,
+    Performance, Spatial,
 };
-use gdnative::{Vector2, Vector3, Color, NativeClass, methods};
+use gdnative::{methods, Color, NativeClass, Ptr, Variant, Vector2, Vector3, GodotObject};
 use lazy_static::lazy_static;
 use legion::prelude::*;
 use std::sync::Mutex;
 
 use crate::animation::{animation_systems, Animation, AnimationTree};
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
+use crate::contextmenu::ContextMenuNode;
 use crate::enemy::{enemy_systems, DetectionRange, Enemy};
 use crate::formation::{formation_systems, Formation, FormationPos, FormationUI, FormationUnit};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
@@ -22,8 +22,7 @@ use crate::saveload;
 use crate::spawner;
 use crate::tilemap::{draw_tilemap, Coords, TileMap};
 use crate::unit::Unit;
-use crate::debug::DebugDraw;
-use crate::contextmenu::ContextMenuNode;
+use crate::safe;
 
 fn setup_physics_schedule() -> Schedule {
     let builder = Schedule::builder();
@@ -60,18 +59,10 @@ where
 //     - Resources -
 // -----------------------------------------------------------------------------
 pub struct Delta(pub f32);
-pub struct ClickIndicator(pub MeshInstance);
+pub struct ClickIndicator(pub Ptr<MeshInstance>);
 
 unsafe impl Send for ClickIndicator {}
 unsafe impl Sync for ClickIndicator {}
-
-impl ClickIndicator {
-    pub fn set_position(&mut self, pos: Vector3) {
-        unsafe {
-            self.0.set_translation(pos);
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct Line(pub Vector3, pub Vector3, pub Color, pub f64);
@@ -92,7 +83,7 @@ impl DebugLines {
 
 #[derive(Debug)]
 pub struct ClickedState {
-    pub clicked: bool
+    pub clicked: bool,
 }
 
 // -----------------------------------------------------------------------------
@@ -131,43 +122,33 @@ impl GameWorld {
     }
 
     #[export]
-    pub fn _ready(&mut self, owner: &mut Spatial) {
-        let click_indicator = some_or_bail!(
-            owner.get_and_cast::<MeshInstance>("ClickIndicator"),
-            "failed to get click indicator"
-        );
-        // self.resources.insert(ClickIndicator(click_indicator));
+    pub fn _ready(&mut self, owner: &Spatial) {
+        let click_indicator = owner.get_and_cast::<MeshInstance>("ClickIndicator");
+        self.resources
+            .insert(ClickIndicator(click_indicator.claim()));
 
         // Tilemap
-        let gridmap = owner
-            .get_and_cast::<GridMap>("GridMap")
-            .expect("failed to get grid map");
-        self.resources.insert(TileMap(gridmap));
+        let gridmap = owner.get_and_cast::<GridMap>("GridMap");
+        self.resources.insert(TileMap(gridmap.claim()));
 
         // Camera
-        let camera = owner
-            .get_and_cast::<GodotCamera>("Camera")
-            .expect("failed to get camera");
-        self.resources.insert(Camera(camera));
+        let camera = owner.get_and_cast::<GodotCamera>("Camera");
+        self.resources.insert(Camera(camera.claim()));
 
         // Unit selection area (detect mouse selection)
-        let unit_selection_area = owner
-            .get_and_cast::<Area>("UnitSelectionArea")
-            .expect("failed to get unit selection area");
-        self.resources
-            .insert(UnitSelectionArea(unit_selection_area));
+        let unit_selection_area = owner.get_and_cast::<Area>("UnitSelectionArea");
+        self.resources.insert(UnitSelectionArea(unit_selection_area.claim()));
 
         // Draw selection node
-        let selection_box = owner
-            .get_and_cast::<MeshInstance>("SelectionBox")
-            .expect("failed to get selection box");
-        self.resources.insert(SelectionBox(selection_box));
+        let selection_box = owner.get_and_cast::<MeshInstance>("SelectionBox");
+        self.resources.insert(SelectionBox(selection_box.claim()));
 
         // Formation UI
         let formation_ui = spawner::spawn_formation_ui();
-        let mut ui = some_or_bail!(owner.get_and_cast::<CanvasLayer>("UI"), "wrong UI node");
-        unsafe { ui.add_child(Some(formation_ui.to_node()), false) };
-        self.resources.insert(FormationUI::new(formation_ui));
+        safe!(formation_ui);
+        let ui = owner.get_and_cast::<CanvasLayer>("UI");
+        ui.add_child(Some(formation_ui.to_node()), false);
+        self.resources.insert(FormationUI::new(formation_ui.claim()));
 
         let colors = [
             Color::rgb(1., 0., 0.),
@@ -190,36 +171,32 @@ impl GameWorld {
             let z = 10.;
 
             let mut formation_unit = spawner::spawn_formation_unit();
-            unsafe {
-                formation_ui
-                    .get_and_cast::<Control>("Pending")
-                    .map(|mut p| {
-                        p.add_child(Some(formation_unit.to_node()), false);
-                    });
-                formation_unit.set_position(Vector2::new(formation_x, formation_y), false);
+            safe!(formation_unit);
+            {
+                let p = formation_ui.get_and_cast::<Control>("Pending");
+                p.add_child(Some(formation_unit.to_node()), false);
             }
+            formation_unit.set_position(Vector2::new(formation_x, formation_y), false);
 
             let mut unit = spawner::spawn_unit();
+            safe!(unit);
+
             let mut context_menu = spawner::spawn_context_menu();
+            safe!(context_menu);
 
-            unsafe {
-                owner.add_child(Some(unit.to_node()), false);
-                unit.set_translation(Vector3::new(x, y, z));
-                unit.add_child(Some(context_menu.to_node()), false);
-            }
+            owner.add_child(Some(unit.to_node()), false);
+            unit.set_translation(Vector3::new(x, y, z));
+            unit.add_child(Some(context_menu.to_node()), false);
 
-            let pos = unsafe { unit.get_translation() };
+            let pos = unsafe { unit.translation() };
 
-            let anim_tree = some_or_bail!(
-                unit.get_and_cast::<GDAnimationTree>("AnimationTree"),
-                "failed to get animation tree"
-            );
+            let anim_tree = unit.get_and_cast::<GDAnimationTree>("AnimationTree");
 
-            let mut unit = Unit::new(unit);
+            let mut unit = Unit::new(unit.claim());
             unit.set_color(color);
 
-            let mut formation_unit = FormationUnit::new(formation_unit);
-            formation_unit.set_color(color);
+            formation_unit.set_modulate(color);
+            let mut formation_unit = FormationUnit::new(formation_unit.claim());
 
             let formation_pos = FormationPos(i as u16);
 
@@ -237,26 +214,28 @@ impl GameWorld {
                         Acceleration(Vector3::zero()),
                         formation_unit,
                         formation_pos,
-                        AnimationTree::new(anim_tree),
+                        AnimationTree::new(anim_tree.claim()),
                         Animation::Idle,
-                        ContextMenuNode(context_menu),
+                        ContextMenuNode(context_menu.claim()),
                     )),
                 );
             });
         }
 
-        for x in 15..15 { // Remember why you did this? No? Good luck to you!
+        for x in 15..15 {
+            // Remember why you did this? No? Good luck to you!
             let x = x as f32 * 4.;
             let y = 12.;
             let z = 26.;
 
             let mut unit = spawner::spawn_enemy();
+            safe!(unit);
             unsafe {
                 owner.add_child(Some(unit.to_node()), false);
                 unit.set_translation(Vector3::new(x, y, z));
             }
 
-            let pos = unsafe { unit.get_translation() };
+            let pos = unit.translation();
 
             let speed = MaxSpeed(10f32);
 
@@ -264,7 +243,7 @@ impl GameWorld {
                 world.insert(
                     (Enemy,),
                     Some((
-                        Unit::new(unit),
+                        Unit::new(unit.claim()),
                         Velocity(Vector3::zero()),
                         speed,
                         Pos(pos),
@@ -279,9 +258,15 @@ impl GameWorld {
     }
 
     #[export]
-    pub fn _unhandled_input(&mut self, owner: &Spatial, event: InputEvent) {
+    pub fn _unhandled_input(&mut self, owner: &Spatial, event: Variant) {
+        let event = event
+            .try_to_object::<InputEvent>()
+            .expect("I expect this to be an input event");
+
         if event.action_pressed("ui_cancel") {
-            unsafe { owner.get_tree().map(|mut tree| tree.quit(0)) };
+            owner
+                .get_tree()
+                .map(|tree| unsafe { tree.assume_safe() }.quit(0));
         }
 
         if event.action_pressed("save") {
@@ -291,21 +276,21 @@ impl GameWorld {
         }
 
         // Mouse button
-        if let Some(btn_event) = event.cast::<InputEventMouseButton>() {
+        if let Some(btn_event) = event.clone().cast::<InputEventMouseButton>() {
             self.resources.get_mut::<MouseButton>().map(|mut btn| {
                 *btn = MouseButton::from_event(btn_event);
             });
         }
 
         // Mouse pos
-        if let Some(mouse_event) = event.cast::<InputEventMouse>() {
+        if let Some(mouse_event) = event.clone().cast::<InputEventMouse>() {
             self.resources.get_mut::<MousePos>().map(|mut pos| {
-                pos.set_global(mouse_event.get_global_position());
+                pos.set_global(mouse_event.global_position());
             });
         }
 
         // Keyboard
-        if let Some(_) = event.cast::<InputEventKey>() {
+        if let Some(_) = event.clone().cast::<InputEventKey>() {
             self.resources.get_mut::<Keyboard>().map(|mut key| {
                 if event.is_action_pressed("Left".into(), false) {
                     key.update(Keys::LEFT, true);
@@ -341,18 +326,18 @@ impl GameWorld {
         });
 
         // Debug label
-        let mut label = owner.get_and_cast::<Label>("UI/Panel/DebugLabel").unwrap();
+        let label = owner.get_and_cast::<Label>("UI/Panel/DebugLabel");
         let perf = Performance::godot_singleton();
         let fps = format!("fps: {}", perf.get_monitor(Performance::TIME_FPS));
         unsafe { label.set_text(fps.into()) };
 
         self.resources.get_mut::<DebugLines>().map(|mut lines| {
-            owner.get_and_cast::<Node2D>("DebugDraw").map(|mut dd| {
-                dd.with_script(|debug_draw: &mut DebugDraw, _| unsafe {
-                    debug_draw.set_lines(lines.inner.drain(..).collect());
-                    dd.update();
-                });
-            });
+            let dd = owner.get_and_cast::<Node2D>("DebugDraw");
+            // dd.with_script(|debug_draw: &mut DebugDraw, _| unsafe {
+            //         debug_draw.set_lines(lines.inner.drain(..).collect());
+            //         dd.update();
+            //     });
+            // });
         });
     }
 
@@ -368,6 +353,8 @@ impl GameWorld {
 
     // TODO: delete this function (it's in the name)
     pub fn delete_me(&mut self) {
-        self.resources.get_mut::<ClickedState>().map(|mut s| s.clicked = true);
+        self.resources
+            .get_mut::<ClickedState>()
+            .map(|mut s| s.clicked = true);
     }
 }
