@@ -3,7 +3,7 @@ use gdextras::node_ext::NodeExt;
 use gdnative::api::{Control, InputEvent, InputEventMouseButton, Spatial};
 use gdnative::{
     godot_error, godot_wrap_method, godot_wrap_method_inner, godot_wrap_method_parameter_count,
-    methods, Variant, NativeClass, Ptr
+    methods, Variant, NativeClass, Ptr, Instance, GodotObject
 };
 
 use crate::gameworld::GameWorld;
@@ -48,9 +48,9 @@ impl ContextMenu {
         // TODO: this is a terrible hack. Rethink this... please
         // but don't give up on this, just come up with an interface that makes
         // sense and doesn't ruin everything
-        // gameworld.with_script(|game: &mut GameWorld, _| {
-        //     game.delete_me();
-        // });
+        gameworld.with_script(|gameworld: &mut GameWorld, _node| {
+            gameworld.delete_me();
+        });
 
         Some(())
     }

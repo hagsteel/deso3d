@@ -13,6 +13,7 @@ use std::sync::Mutex;
 use crate::animation::{animation_systems, Animation, AnimationTree};
 use crate::camera::{camera_systems, Camera, Drag, SelectionBox, UnitSelectionArea};
 use crate::contextmenu::ContextMenuNode;
+use crate::debug::DebugDraw;
 use crate::enemy::{enemy_systems, DetectionRange, Enemy};
 use crate::formation::{formation_systems, Formation, FormationPos, FormationUI, FormationUnit};
 use crate::input::{Keyboard, Keys, MouseButton, MousePos};
@@ -329,15 +330,15 @@ impl GameWorld {
         let label = owner.get_and_cast::<Label>("UI/Panel/DebugLabel");
         let perf = Performance::godot_singleton();
         let fps = format!("fps: {}", perf.get_monitor(Performance::TIME_FPS));
-        unsafe { label.set_text(fps.into()) };
+        label.set_text(fps.into());
 
         self.resources.get_mut::<DebugLines>().map(|mut lines| {
             let dd = owner.get_and_cast::<Node2D>("DebugDraw");
-            // dd.with_script(|debug_draw: &mut DebugDraw, _| unsafe {
-            //         debug_draw.set_lines(lines.inner.drain(..).collect());
-            //         dd.update();
-            //     });
-            // });
+
+            dd.with_script(|debug_draw: &mut DebugDraw, _| {
+                debug_draw.set_lines(lines.inner.drain(..).collect());
+                dd.update();
+            });
         });
     }
 
